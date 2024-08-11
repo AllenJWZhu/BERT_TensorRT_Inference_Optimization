@@ -1,10 +1,8 @@
-# BERT：TensorRT的推理优化
+# BERT: TensorRT的推理优化
 
 BERT(Bidirectional Encoder Representations from Transformers)，是由Google AI Language团队在2018年推出的深度学习模型，它能够处理多种NLP任务。以往每个NLP任务通常需要特定的模型来解决，然而BERT的出现改变了这一局面，当时它不仅能够处理超过11种常见的NLP任务，而且在性能上超越了以往的模型。大模型的横空出世之前，基于BERT的模型以及变种是NLP领域的通用解决方案。
 
 下面将分为以下5点来展开讲解BERT以及模型推理优化点，分别是：
-
-[TOC]
 
 ## 1. BERT的用途以及如何工作
 
