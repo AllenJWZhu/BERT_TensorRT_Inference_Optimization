@@ -1,105 +1,100 @@
-# BERT: TensorRT的推理优化
+# BERT: Inference Optimization with TensorRT
 
-BERT(Bidirectional Encoder Representations from Transformers)，是由Google AI Language团队在2018年推出的深度学习模型，它能够处理多种NLP任务。以往每个NLP任务通常需要特定的模型来解决，然而BERT的出现改变了这一局面，当时它不仅能够处理超过11种常见的NLP任务，而且在性能上超越了以往的模型。大模型的横空出世之前，基于BERT的模型以及变种是NLP领域的通用解决方案。
+BERT (Bidirectional Encoder Representations from Transformers) is a deep learning model introduced by Google AI Language team in 2018, capable of handling various NLP tasks. Previously, each NLP task typically required a specific model to solve. However, BERT's emergence changed this landscape. At the time, it could handle over 11 common NLP tasks and outperformed previous models in performance. Before the advent of large language models, BERT-based models and their variants were the universal solution in the NLP field.
 
-下面将分为以下5点来展开讲解BERT以及模型推理优化点，分别是：
+We will elaborate on BERT and model inference optimization points in the following 5 sections:
 
-## 1. BERT的用途以及如何工作
+## 1. BERT's Applications and How It Works
 
-### 1.1 BERT的用途
+### 1.1 BERT's Applications
 
-BERT，作为一种先进的语言处理模型，在多种语言任务中发挥着重要作用：
+BERT, as an advanced language processing model, plays a crucial role in various language tasks:
 
-- **情绪分析**：BERT能够分析电影评论等文本，判断其情绪倾向是正面还是负面；
-- **问答系统**：它可以为聊天机器人提供能力，使其更好地理解并回答用户的问题；
-- **文本预测**：在撰写电子邮件等文本时，BERT可以预测用户接下来可能输入的单词或短语，如Gmail的智能撰写功能；
-- **文本生成**：BERT还能够基于给定的几句话生成一篇关于特定主题的文章；
-- **文本摘要**：它可以快速提取长文本，如法律合同的关键信息，生成摘要；
-- **多义词解析**：BERT能够根据上下文准确理解和区分多义词，例如“Bank”可以指金融机构或河岸。
+- **Sentiment Analysis**：BERT can analyze texts like movie reviews to determine whether the sentiment is positive or negative.
+- **Question Answering Systems**：It can provide capabilities for chatbots, enabling them to understand better and answer user questions.
+- **Text Prediction**：When writing texts like emails, BERT can predict words or phrases the user might input next, such as Gmail's smart compose feature.
+- **Text Generation**：BERT can also generate an article on a specific topic based on a few given sentences.
+- **Text Summarization**：It can quickly extract key information from long texts, like legal contracts, to generate summaries.
+- **Disambiguation**：BERT can accurately understand and distinguish ambiguous words based on context, for example, "Bank" can refer to a financial institution or a riverbank.
 
-这些只是BERT能力的一部分展示，实际上，BERT和其他NLP技术已经渗透到我们日常生活的许多方面：
+These are just a part of BERT's capabilities. In fact, BERT and other NLP technologies have permeated many aspects of our daily lives:
 
-- **翻译服务**：谷歌翻译等工具使用NLP技术来提供准确的语言翻译；
-- **语音助手**：像Alexa和Siri这样的语音助手依赖NLP来理解和响应用户的语音指令；
-- **聊天机器人**：在线客服和聊天机器人使用NLP来解析用户的问题并提供有用的回答；
-- **搜索引擎**：谷歌搜索使用NLP技术来理解搜索查询的意图，并提供相关结果；
-- **语音导航**：GPS和导航应用程序使用语音控制功能，允许用户通过语音指令进行操作。
+- **Translation Services**: Tools like Google Translate use NLP technology to provide accurate language translation.
+- **Voice Assistants**: Voice assistants like Alexa and Siri rely on NLP to understand and respond to users' voice commands.
+- **Chatbots**: Online customer service and chatbots use NLP to parse users' questions and provide useful answers.
+- **Search Engines**: Google Search uses NLP technology to understand the intent of search queries and provide relevant results.
+- **Voice Navigation**: GPS and navigation applications use voice control features, allowing users to operate through voice commands.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/BERT-example.png" alt="BERT Google Search Example" width="681" height = "355" />
 
-如上图中Google 翻译，从2020年起BERT 可帮助 Google 更好地显示几乎所有搜索的（英语）结果。
+As shown in the image above, Google Translate, since 2020, BERT has been helping Google better display results for almost all (English) searches.
 
-### 1.2 BERT是如何工作的
+### 1.2 How BERT Works
 
-BERT的工作原理主要基于以下几个关键概念：
+BERT's working principle is mainly based on the following key concepts:
 
-1. **Transformer模型**：Transformer是一种深度学习架构，它的核心是注意力机制（Attention Mechanism），这种机制使得模型能够处理序列数据，并且能够捕捉序列中的长距离依赖关系。
-2. **双向训练**：传统的语言模型在训练时只考虑文本的一个方向，要么从左到右，要么从右到左。而BERT是双向的，它一次考虑整个文本，这使得BERT能够理解单词的上下文。
-3. **预训练和微调**：BERT首先在大量文本数据上进行预训练，然后在特定任务上进行微调。预训练阶段的目标是理解语言的语法和语义（通过两个任务：掩码语言模型和下一句预测）。微调阶段则是为了让模型理解特定任务（例如情感分析或问答）。
-4. **词嵌入**：BERT使用WordPiece嵌入，这是一种子词嵌入方法。这意味着BERT可以处理词汇表外的单词，因为它可以将单词分解为已知的子词。
+- **Transformer Model**: The Transformer is a deep learning architecture, its core is the attention mechanism, which allows the model to process sequence data and capture long-distance dependencies in the sequence.
+- **Bidirectional Training**: Traditional language models only consider one direction of the text during training, either from left to right or right to left. BERT is bidirectional, considering the entire text at once, allowing BERT to understand the context of words.
+- **Pre-training and Fine-tuning**: BERT is first pre-trained on a large amount of text data, then fine-tuned on specific tasks. The goal of the pre-training phase is to understand the grammar and semantics of language (through two tasks: masked language model and next sentence prediction). The fine-tuning phase is to make the model understand specific tasks (such as sentiment analysis or question answering).
+- **Word Embedding**: BERT uses WordPiece embedding, which is a subword embedding method. This means BERT can handle out-of-vocabulary words because it can break words down into known subwords.
 
-在实际的使用过程中，BERT模型接收一串标记（通常是单词或子词）作为输入，然后输出这些标记的嵌入，这些嵌入是通过考虑上下文（即输入序列中的其他标记）获得的。这些嵌入然后可以用于各种下游任务，如文本分类、命名实体识别或问答。
+In practical use, the BERT model receives a string of tokens (usually words or subwords) as input, then outputs the embeddings of these tokens, which are obtained by considering the context (i.e., other tokens in the input sequence). These embeddings can then be used for various downstream tasks such as text classification, named entity recognition, or question answering.
 
-我们更为关注BERT的推理过程，对于训练以及微调这里就不展开叙述了，最为重要的是Transformer结构以及词嵌入的方式，后面我们将对这两点详细展开。简单来讲，就是文本输入通过词嵌入层转换为tensor，然后执行Transformer结构的Encoder layers，经过多层的layer，得到一个输出tensor，针对特定的任务执行特定的后处理，比如，如果是分类任务，则经过一个线性层以及softmax层等分类模块返回每个类别的概率；如果是翻译类服务，则返回tensor对应的文本信息。
+We are more focused on BERT's inference process, so we won't elaborate on training and fine-tuning here. The most important aspects are the Transformer structure and the word embedding method, which we will elaborate on in detail later. Simply put, the text input is converted to a tensor through the word embedding layer, then executes the Encoder layers of the Transformer structure, goes through multiple layers, and obtains an output tensor. Specific post-processing is performed for specific tasks. For example, if it's a classification task, it goes through a linear layer and softmax layer and other classification modules to return the probability of each category; if it's a translation service, it returns the text information corresponding to the tensor.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/BERT-model-calssification-output-vector-cls.png" alt="img" width="661" height = "400" />
 
-上图为BERT的一个情感分类任务的工作流程，输入为 `a visually stunning rumination on love` 经过Tokenize层、Embedding层、Encoder层得到BERT的输出，再经过一个Logistic Regression层去得到`postive` `negative`的概率，最后得到情感的分类结果是`positive`。
+The above image shows the workflow of a sentiment classification task for BERT. The input "a visually stunning rumination on love" goes through the Tokenize layer, Embedding layer, and Encoder layer to get BERT's output, then goes through a Logistic Regression layer to get the probabilities of "positive" and "negative", and finally gets the sentiment classification result as "positive".
 
-通过这一小节的描述，我们对BERT模型有了一个框架性地理解，但你可能对模型的实现细节还有疑惑。别急，下一小节我们将详细介绍模型的实现细节。
+## 2. BERT Model Structure and Size
 
-## 2. BERT的模型结构以及大小
+The BERT model is primarily composed of the Tokenizer layer, Embedding layer, and Encoder layers. The Encoder layer includes the Self-Attention layer, LayerNorm, Feed Forward layer, and Residual Connection & Normalization layer.
 
-BERT模型主要是由Tokenizer层、Embedding层以及Encoder层组成，Encoder层包含Self-Attention层、LayerNorm层、Feed Forward层、残差连接&归一化层。
+### 2.1 Tokenizer Layer
 
-### 2.1 Tokenizer层
+The Tokenizer layer is responsible for converting raw text into a format that the BERT model can understand and process. This conversion process involves the following steps:
 
-它负责将原始文本转换成BERT模型可以理解和处理的格式。这个转换过程包括以下几个步骤：
+- **Tokenization**: The raw text is split into words or subword units. BERT uses the WordPiece algorithm, which can break down unknown or rare words into smaller, known subwords.
+- **Adding Special Tokens**: Special tokens such as [CLS] and [SEP] are added to mark the start and end of sentences. The [CLS] token is used for classification tasks, while the [SEP] token is used to separate paired sentences.
+- **Token to ID Conversion**: Each token is converted to its corresponding ID in the vocabulary. The BERT vocabulary is fixed, with each word or subword having a unique index.
+- **Padding and Truncation**: To process multiple sentences in batches, the BERT Tokenizer pads (or truncates) all sentences to the same length.
+- **Creating Attention Masks**: An attention mask is created to indicate which positions are actual words and which are padding. This allows the model to ignore the padded parts during processing.
 
-1. **分词（Tokenization）**：将原始文本分割成单词或者子词单元（subword units）。BERT使用的是WordPiece算法，它可以将未知或罕见的单词分解成更小的已知子词。
-2. **添加特殊标记（Special Tokens）**：例如，每个句子的开始和结束会分别添加特殊的`[CLS]`和`[SEP]`标记。`[CLS]`标记用于分类任务，而`[SEP]`标记用于分隔成对的句子。
-3. **转换为ID（Token to ID Conversion）**：将每个分词转换为词汇表中对应的ID。BERT模型的词汇表是固定的，每个词或子词都有一个唯一的索引。
-4. **填充和截断（Padding and Truncation）**：为了能够以批处理的方式处理多个句子，`BERT Tokenizer` 会将所有句子填充（或截断）到相同的长度。
-5. **创建注意力掩码（Attention Mask）**：这个掩码告诉模型哪些位置是真实的单词，哪些位置是填充的。这样，模型在处理时就可以忽略填充的部分。
+# Input text
 
-使用方式如下：
-
-```python
-# 输入文本
+```
 text = "Here is some text to encode"
-# 使用分词器处理文本 返回tensor
+# Process text using the tokenizer and return a tensor
 encoded_input = tokenizer(text, return_tensors='pt')
 ```
 
-在这个例子中，`encoded_input` 将是一个字典，包含了转换后的输入数据，如`input_ids`和`attention_mask`，它们可以直接被BERT模型使用。
+In this example, `encoded_input` will be a dictionary containing the transformed input data, such as `input_ids` and `attention_mask`, which can be directly used by the BERT model.
 
-### 2.2 Embedding层
+### 2.2 Embedding Layer
 
-在BERT模型中，Embedding层即词嵌入层，是模型的第一层，它负责将输入的token转换成固定维度的向量。这些向量是模型能够理解和处理的数值表示，它们编码了单词的语义信息以及它们在特定上下文中的含义。
+In BERT, the Embedding layer, which is the first layer of the model, is responsible for converting input tokens into fixed-dimensional vectors. These vectors are numerical representations that the model can understand and process, encoding both the semantic information of words and their meanings in specific contexts.
 
-具体来说，BERT的词嵌入层包括以下几个部分：
+The BERT embedding layer includes the following components:
 
-1. **Token Embeddings**：这是将单词或子词token转换为向量的基本嵌入。每个token都被映射到一个高维空间（在BERT的基础模型中是768维）中的一个点。
-2. **Segment Embeddings**：BERT可以处理成对的句子（例如，在问答任务中的问题和答案）。Segment embeddings用于区分两个句子，每个句子会被分配一个不同的segment embedding。
-3. **Positional Embeddings**：由于BERT使用的是Transformer架构，它不像循环神经网络（RNN）那样自然地处理序列数据。因此，BERT引入了位置嵌入来编码token在句子中的位置信息。
+- **Token Embeddings**: These are the basic embeddings that convert words or subword tokens into vectors. Each token is mapped to a point in a high-dimensional space (768 dimensions in the base BERT model).
+- **Segment Embeddings**: BERT can process pairs of sentences (e.g., questions and answers in a QA task). Segment embeddings are used to distinguish between the two sentences, with each sentence being assigned a different segment embedding.
+- **Positional Embeddings**: Since BERT uses a Transformer architecture, which doesn’t naturally handle sequential data like RNNs, positional embeddings are introduced to encode the position of each token in the sentence.
 
-<img src=".\Input.png" alt="Input" style="zoom:80%;" />
+These three types of embeddings are added element-wise to produce a composite embedding, which encodes the token’s semantic information, its position in the sentence, and which sentence it belongs to (in the case of paired sentences). This composite embedding is then passed to the subsequent layers of BERT for further processing.
 
-这三种嵌入在模型中是逐元素相加的，以产生一个综合的嵌入，它包含了token的语义信息、在句子中的位置信息，以及它属于哪个句子（对于成对句子）。这个综合嵌入随后被传递到BERT的后续层中，用于进一步的处理和学习。
-
-在Torch中的使用
+Here’s how it’s implemented in PyTorch:
 
 ```python
-# 初始化
+# Initialization
 self.token_embeddings = nn.Embedding(vocab_size, hidden_size)
 self.segment_embeddings = nn.Embedding(type_vocab_size, hidden_size)
 self.position_embeddings = nn.Embedding(max_position_embeddings, hidden_size)
-# 使用
-# 分词的结果
+# Usage
+# Result of tokenization
 seq_length = input_ids.size(1)
-position_ids = Torch.arange(seq_length, dtype=Torch.long, device=input_ids.device)
+position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
 position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
-# Get Token embeddings from token ids
+# Get token embeddings from token ids
 token_embeds = self.token_embeddings(input_ids)
 # Get segment embeddings from segment ids
 segment_embeds = self.segment_embeddings(segment_ids)
@@ -107,57 +102,48 @@ segment_embeds = self.segment_embeddings(segment_ids)
 position_embeds = self.position_embeddings(position_ids)
 ```
 
-在内部，`nn.Embedding` 包含一个参数矩阵，其大小为 `(num_embeddings, embedding_dim)`，这个矩阵就是嵌入矩阵。当你传入索引时，PyTorch 会使用这些索引作为嵌入矩阵的行号来检索对应的嵌入向量。可以当成一个词典，根据输入索引去查询得到结果。这个过程在硬件上是非常高效的，尤其是在 GPU 上。
+Internally, `nn.Embedding` contains a parameter matrix of size `(num_embeddings, embedding_dim)`, which serves as the embedding matrix. When indices are passed in, PyTorch uses these indices as row numbers to retrieve the corresponding embedding vectors from the matrix. This process is highly efficient, especially on GPUs.
 
 ###  2.3 Encoder Layer
 
-Encoder和Decoder是Transformer中的两个重要组成部分，但BERT只使用了Encoder。BERT由多个Encoder layer堆叠而成。下图是一个Encoder 的结构图，包含了Attention层、LayerNorm层、Feed Forward层、残差连接&归一化层等。
+The Encoder and Decoder are two key components of the Transformer architecture, but BERT uses only the Encoder. BERT is composed of multiple stacked Encoder layers. The diagram below shows the structure of an Encoder, including the Attention layer, LayerNorm layer, Feed Forward layer, and Residual Connection & Normalization layer.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/c7wD2V.png" alt="img" width="300" height = "300" />
 
-#### 2.3.1 Self-Attention层
+#### 2.3.1 Self-Attention Layer
 
-**Self-Attention，简单理解就是一个句子内的单词，互相看其他单词对自己的影响力有多大， 也就是说，句子内各单词的注意力应该关注在该句子内其他单词中的哪些单词上。**
+**Self-attention can be understood as the process where words within a sentence pay attention to the influence of other words in the same sentence. In other words, it determines which words in the sentence should focus on which other words.**
 
- self-attention 的核心组成就是查询（Query）、键（Key）和值（Value）向量。
+The core components of self-attention are the Query, Key, and Value vectors.
 
-- **Query ($Q$):** 可以将其视为寻求信息的元素。对于输入序列中的每个词，都会计算一个查询向量。这些查询表示你希望在序列中关注什么。
+- **Query (Q)**: This can be viewed as the element seeking information. For each word in the input sequence, a query vector is computed, representing what the word wants to focus on in the sequence.
+- **Key (K)**: Keys act like signposts, helping to identify and locate important elements in the sequence. Like the query, a key vector is computed for each word.
+- **Value (V)**: Values carry the information. Again, a value vector is computed for each word, containing the content that should be considered when determining the importance of words in the sequence.
 
-- **Key ($K$):**  就像路标。它们有助于识别和定位序列中的重要元素。与查询一样，为每个词计算键向量。
-
-- **Value ($V$):** 值携带信息。同样，为每个词计算值向量。这些向量包含我们希望在确定序列中词语重要性时考虑的内容。
-
-
-1. **Query, Key, and Value 计算:** 对于输入序列中的每个词，我们都会计算查询（Query）、键（Key）和值（Value）向量。这些向量是self- Attention机制运行的基础。 对应这3个向量的计算，对应有3个Linear层，用输入分别跟3个Linear层的权重做矩阵乘就得到了$Q$、$K$、$V$ 向量，如下图中$W^Q$, $W^K$, $W^V$即是模型权重。
+1. **Computing Query, Key, and Value**: For each word in the input sequence, query (Q), key (K), and value (V) vectors are computed. These vectors are the basis for the self-attention mechanism. Corresponding to these three vectors, there are three Linear layers. The input is multiplied by the weights of these three Linear layers to obtain the Q, K, and V vectors, as shown by the model weights $W^Q$, $W^K$, $W^V$ in the diagram below.
 
    <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/c7wF9x.png" alt="img" width="300" height = "350" />
 
-2. **计算Attention:**  为序列中的每个词对计算注意力分数。查询Query和键Key之间的注意力分数量化了它们的相关性。对于Attention Scores的计算是将上一步的$Q$ 向量和 $K^T$向量相乘，并除以一个参数，然后经过softmax，再乘以 $V$ 就得到了 。
+2. **Computing Attention**: For each word pair in the sequence, attention scores are calculated. The attention score between a query and key quantifies their relevance. The attention scores are computed by multiplying the Q vector and the transpose of the K vector, dividing by a parameter, and then applying a softmax function, followed by multiplying by the V vector.
    $$
    Y = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
    $$
 
    <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/c7wk36.png" alt="img" width="400" height = "120" />
 
-   其中，$QK^T$是两个矩阵的点积；$d_k$ 是Key的dim维度大小，一般情况下与Query 、Value的dim维度一致；$\text{softmax}$ 是沿着最后一个维度按行做softmax操作。
+   Here, $QK^T$ is the dot product of two matrices; $d_k$ is the dimension of the Key, which generally matches the dimensions of Query and Value; $\text{softmax}$ is applied along the last dimension, row-wise.
 
-   聊到这里，你可能对Attention机制如何用公式表达已经有了基本的认识，但还是不知道为什么这样做会有效。接下来，我们用通俗易懂的例子形象地理解一下Attention的作用。先来看self-Attention，举个例子，输入序列为“**我 昨天 在 图书馆 遇到了 我的老师**”，那么，“**我**”可能会关注“**昨天**”来获取时间信息；“**图书馆**”可能会关注“**我的老师**”来理解事件发生的地点和人物之间的关系；“**遇到了**”可能会关注“**我**”和“**我的老师**”来理解动作的执行者和对象。
+   By this point, you may have a basic understanding of how the attention mechanism is expressed mathematically, but still be unsure why this process is effective. Let's use a simple example to better understand the role of attention. Consider the input sequence `I met my teacher in the library yesterday.` The word `I` might focus on `yesterday` to capture the time information; `library` might focus on `my teacher` to understand the relationship between location and person; `met` might focus on `I` and `my teacher` to understand who is acting and to whom.
 
-   上述输入序列中各个成分之间存在上述复杂的关系，那么如何将这些复杂关系提取出来呢，这就是self-Attention的作用了。
-
-   我们将包含个词的文本输入序列比作一个班级里有6个学生，这6位学生分别为{“$X_1$: 我”，“$X_2$: 昨天”，“$X_3$: 在”，“$X_4$: 图书馆”，“$X_5$: 遇到了”，“$X_6$: 我的老师”}。为了让班级内6位同学相互助力携手成长，我们设计一次综合测试，包含3个子部分测试，分别考查出每位学生“希望向其他同学学习哪些优秀品质(Query)”、“自己自身具备哪些值得别人学习的优秀品质(Key)”、“培养Key中这些优秀品质的方式方法(Value)”。
-
-   现在学生要向班级内的所有同学（包含自己）去学习，那么应该重点向哪些同学学习呢，取决于各位学生之间的Query与Key的匹配程度。如果学生$X_i$希望学习的优秀品质与学生$X_j$具备的优秀品质恰好匹配，那么学生$X_i$应该重点向学生$X_j$学习，反之学生$X_i$不应该重点向学生$X_j$学习。Attention中用$qk^T$表示序列中词与词的关注程度（是一个标量/数值），对应上述例子来说，就是用$qk^T$表示序列中学生与学生的匹配程度。获得学生$X_i$与班内所有学生的匹配程度之后，学生$X_i$就要开始从班内所有学生身上学习自己想要获得的优秀品质了（吸收培养优秀品质的方式方法），便于提升自己。Attention中用$Y$表示学生向班内所有同学学习并自我进化后的样子。
-
-3. **Muti Head:** 进一步扩展了self Attention，它扩展了模型关注不同位置的能力，它为注意力层提供了多个“表示子空间”，可以让Attention有更丰富的层次。有了多头注意力，拥有多组Query, Key, Value 权重矩阵，会有多个上面的1、2步骤的结果$Z$，那就将多个版本的$Z$拼接称为一个长向量，然后用一个全连接网络，即乘以一个矩阵，就能得到一个短的向量作为输出。
-
-   如下图中$W^{Q}_0$, $W^{K}_0$,   $W^{V}_0$ 以及$W^{Q}_1$, $W^{K}_1$,   $W^{V}_1$ 等都是多头注意力的模型权重，执行的步骤跟上面一致，最后跟$W^{O}$做矩阵乘，得到最后的结果。
+   In the above input sequence, there are complex relationships between different components. Self-attention is used to extract these complex relationships.
+   
+4. **Multi-Head Attention**: This is an extension of self-attention, expanding the model's ability to focus on different parts of the sequence. Multi-head attention provides the attention layer with multiple "representation subspaces," allowing for richer levels of attention. With multi-head attention, there are multiple sets of Q, K, V weight matrices, leading to multiple results like those in steps 1 and 2. These results are then concatenated into a longer vector, and a fully connected network (matrix multiplication) is applied to produce a shorter output vector.
 
    <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240611225115104-8117476.png" alt="image-20240611225115104" width="600" height = "320" />
 
-multi-head self-Attention，我们也可以直接理解一下它的作用。在解释self-Attention时，我们以班级内同学们之间相互学习成长解释了self-Attention的作用。在那个例子中，我们对班内的同学只做了一次综合测试，去考查同学们的Query、Key、Value，但只有一次综测总会带来误差，因为有些同学可能会发挥失常，**最好的办法当然是设计多次综合测试，尽可能全面准确地考查同学们的Query、Key、Value**。这就是multi-head self-Attention。
+We can also understand the role of multi-head attention more intuitively. In explaining self-attention, we used an example of students in a classroom learning from each other. In that example, the students took only one comprehensive test to assess their Query, Key, and Value, but relying on just one test might lead to errors because some students might not perform well. The best approach would be to design multiple comprehensive tests to assess the students’ Query, Key, and Value as accurately as possible. This is essentially the role of multi-head self-attention.
 
-Torch实现
+Here’s how it’s implemented in PyTorch:
 
 ```python
 class MultiHeadAttention(nn.Module):
@@ -194,63 +180,63 @@ class MultiHeadAttention(nn.Module):
         return output
 ```
 
-#### 2.3.2 Layer Norm与残差连接
+#### 2.3.2 LayerNorm and Residual Connection
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240611232740561-8119662.png" alt="image-20240611232740561" width="400" height = "210"  />
 
-如上图所示，其中Add表示残差连接，Norm表示LayerNorm，在上一步经过 self-Attention 层之后的输出 Self-Attention(Q, K, V)，将这个输出与模型的输入$X_{embedding}$加起来做残差连接，
+As shown above, "Add" represents the residual connection, and "Norm" represents LayerNorm. The output from the self-attention layer, Self-Attention(Q, K, V), is added to the model’s input, X_embedding, for residual connection:
 $$
 X_{embedding} + Self-Attention(Q, K, V)
 $$
-随后将残差连接的结果，进行Layer Normalize。Layer Normalization 的作用是把神经网络中隐藏层归一为标准正态分布，以起到加快训练速度加速收敛的作用
+The result of the residual connection is then layer-normalized. Layer normalization standardizes the hidden layer to a standard normal distribution, which accelerates the training process and helps the model converge faster.
 
-Layer Normalization的计算包含三个步骤：
+The steps for Layer Normalization are as follows:
 
-1. **计算均值$\mu_i$**：
+1. **Compute Mean $\mu_i$**：
    $$
    \mu_i = \frac{1}{D} \sum_{j=1}^{D} x_{ij}
    $$
 
-​	对于输入 $X$ 的shape为$[B, S, D]$，沿着最后一个维度计算。
+​	For an input $X$ with a shape of [B, S, D], the mean is computed along the last dimension.
 
-2. **计算方差$\sigma_i^2$**：
+2. **Compute Variance $\sigma_i^2$**：
    $$
    \sigma_i^2 = \frac{1}{D} \sum_{j=1}^{D} (x_{ij} - \mu_i)^2
    $$
 
-3. **归一化每个样本的特征**:
+3. **Normalize Each Sample's Features**:
    $$
    \hat{x}_{ij} = \frac{x_{ij} - \mu_i}{\sqrt{\sigma_i^2 + \epsilon}}
    $$
 
-​	 其中$\epsilon$ 是一个很小的数，防止分母为零，通常取 $10^{-5}$或$10^{-6}$。
+​	 Where $\epsilon$ is a small constant, usually $10^{-5}$ or $10^{-6}$, to prevent division by zero.
 
-4. **进行缩放和平移（可学习的参数$ \gamma$ 和 $\beta$​）**：
+4. **Apply Scaling and Shifting (Learnable Parameters $\gamma$ and $\beta$)**：
    $$
    y_{ij} = \gamma \hat{x}_{ij} + \beta
    $$
 
-   其中 $\gamma$ 和 $ \beta $是可学习的参数，它们与输入$X$的维度$D$相同，通过训练过程学习得到，以便网络可以恢复到原始的表示空间，在推理过程中，这两个参数在权重中可以获取。
+   Here, $\gamma$ and $\beta$ are learnable parameters, with dimensions matching the input $X$'s dimension $D$. These parameters are learned during training, allowing the network to restore the original representation space. During inference, these parameters can be accessed in the model’s weights.
 
-   最终，$y_{ij} $是层归一化的输出，它将被用作下一层或下一个操作的输入。		
+The final output, $y_{ij}$, is the result of layer normalization and will be used as input for the next layer or operation.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/c7wtbQ.png" alt="img" width="500" height = "260"/>
 
-上图为Batch Normalization与Layer Normalize的区别，两者唯一的区别就是Layer Normalize不考虑其他数据，只考虑自己，这样就避免了不同batch size的影响。
+The diagram above illustrates the difference between Batch Normalization and Layer Normalization. The key difference is that Layer Normalization normalizes each data point individually, without considering others, thus avoiding the impact of different batch sizes.
 
-在Torch的使用中可以直接调用API
+In PyTorch, LayerNorm can be easily applied using the following API:
 
 ```python
 self.norm2 = nn.LayerNorm(d_model)
 ```
 
-#### 2.3.3 FFN
+#### 2.3.3 Feed Forward Network (FFN)
 
-FFN全称为Feed Forward Neural Network，FFN 的主要目的是引入非线性，帮助模型学习更复杂的表示，主要有以下几个步骤：
+The FFN, or Feed Forward Neural Network, is designed to introduce non-linearity, helping the model learn more complex representations. The FFN consists of the following steps:
 
-1. **线性变换**：输入首先通过一个线性变换，将输入的维度从 `d_model` 映射到一个更大的维度 `d_ff`。一般`d_ff`为`d_model`的四倍。
-2. **激活函数**：应用一个非线性激活函数，例如 ReLU 或 GeLU（Gaussian Error Linear Unit），增强模型的表达能力。
-3. **第二个线性变换**：激活后的结果再次通过一个线性变换，将维度从 `d_ff` 映射回 `d_model`。
+- **Linear Transformation**: The input first undergoes a linear transformation, mapping its dimension from `d_model` to a larger dimension `d_ff`. Typically, `d_ff` is four times `d_model`.
+- **Activation Function**: A non-linear activation function, such as ReLU or GeLU (Gaussian Error Linear Unit), is applied to enhance the model’s expressive power.
+- **Second Linear Transformation**: The activated result is then passed through another linear transformation, mapping the dimension back from `d_ff` to `d_model`.
 
 ```python
 class FeedForwardNetwork(nn.Module):
@@ -268,11 +254,11 @@ class FeedForwardNetwork(nn.Module):
         return x
 ```
 
-通过这种方式，FFN 可以捕捉到输入数据中的复杂模式和依赖关系。
+This approach allows the FFN to capture complex patterns and dependencies in the input data.
 
-### 2.4 模型参数及大小
+### 2.4 Model Parameters and Size
 
-BERT相关参数
+BERT’s key parameters are defined as follows:
 
 ```python
 max_len = 30
@@ -289,51 +275,43 @@ n_segs = 2
 
 ```
 
+- max_len: The maximum length of the input sequence.
+- max_vocab: The maximum size of the vocabulary.
+- max_pred: The maximum number of tokens that can be masked during training.
+- d_k, d_v: The dimensions of the Key and Value in self-attention, with the dimension of the Query equal to that of the Key since they must always be equal.
+- d_model: The size of the Embedding.
+- d_ff: The hidden layer size of the Feed Forward Network, generally four times d_model.
+- n_heads: The number of heads in multi-head attention.
+- n_layers: The number of stacked Encoder layers.
+- n_segs: The number of sentence segments for segment embedding in BERT.
 - 
-  max_len: 输入序列的最大长度；
-  
-- max_vocab: 字典的最大大小；
-
-- max_pred: Mask时最大的Mask数量；
-
-- d_k, d_v: 自注意力中K和V的维度，Q的维度直接用K的维度代替，因为这二者必须始终相等；
-
-- d_model: Embedding的大小；
-
-- d_ff: 前馈神经网络的隐藏层大小，一般是d_model的四倍；
-
-- n_heads: 多头注意力的头数；
-
-- n_layers: Encoder的堆叠层数；
-
-- n_segs: 输入BERT的句子段数，用于制作Segment Embedding。
-
-  
+The diagram below shows the architecture of the original BERT models, highlighting the differences between BERT Base and BERT Large:  
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/BERT-size-and-architecture.png" alt="Original BERT models architecture" width="600" height = "286" />
 
-在常见的BERT Base与BERT Large中有不同的参数：
+The table below further illustrates the differences in parameters between the commonly used BERT Base and BERT Large models:
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240612000635210.png" alt="image-20240612000635210" style="zoom:67%;" />
 
-## 3. BERT模型的推理优化
+## 3. Inference Optimization of BERT
 
-### 3.1 Torch推理实现
+### 3.1 Torch Inference Implementation
 
-下面代码原生实现了一个基于BERT的分类网络。通过搭建上面提到的各个模块，然后组成Encoder Layer，最后搭建起来整个网络结构。
+The following code natively implements a classification network based on BERT. By assembling the various modules mentioned earlier, we construct the Encoder Layer and then build the entire network structure.
 
-前面没有仔细讨论在计算过程中tensor的shape变化情况，在下面代码中都有标注，经过不同的算子会有不同的shape变化，这是其中比较细节的部分：
+Previously, we didn't get into the shape transformations of tensors during computation. In the code below, these transformations are annotated. Different operations lead to different shape changes, which is a detailed aspect of the implementation:
 
 ```python
-maxlen = 30  #输入序列的最大长度.
+maxlen = 30  # Maximum length of the input sequence.
 batch_size = 6
-max_pred = 5 # max tokens of prediction 字典的最大大小.
-n_layers = 6  # Encoder的堆叠层数.
-n_heads = 12
-d_model = 768  # Embedding的大小 n_heads * d_k
-d_ff = 768*4 # 4*d_model, FeedForward dimension 前馈神经网络的隐藏层大小, 一般是d_model的四倍.
-d_k = d_v = 64  # dimension of K(=Q), V 自注意力中K和V的维度, Q的维度直接用K的维度代替, 因为这二者必须始终相等.
-n_segments = 2 #输入BERT的句子段数. 用于制作Segment Embedding.
+max_pred = 5  # Maximum number of tokens for prediction in the vocabulary.
+n_layers = 6  # Number of stacked Encoder layers.
+n_heads = 12  # Number of attention heads.
+d_model = 768  # Size of the embedding (n_heads * d_k).
+d_ff = 768 * 4  # 4 * d_model, the hidden layer size of the Feed Forward Network, typically four times d_model.
+d_k = d_v = 64  # Dimension of K(=Q) and V in self-attention. The dimension of Q is set equal to K since they must always match.
+n_segments = 2  # Number of sentence segments input into BERT, used for creating Segment Embeddings.
+
 class Embedding(nn.Module):
     def __init__(self):
         super(Embedding, self).__init__()
@@ -437,7 +415,7 @@ class BERT(nn.Module):
 model = BERT()
 ```
 
-以上为原生实现，也有一些库比如`transformers`对BERT进行了封装，调用起来非常的简单，可以直接使用。
+The above implementation is native, but there are also some libraries, such as `transformers`, that provide a simplified interface for BERT, making it very easy to use directly.
 
 ```python
 from transformers import BERTTokenizer, BERTForMaskedLM
@@ -445,13 +423,13 @@ tokenizer = BERTTokenizer.from_pretrained(BERT_PATH)
 model = BERTForMaskedLM.from_pretrained(BERT_PATH, return_dict = True)
 ```
 
-### 3.2 算子执行过程
+### 3.2 Operator Execution Process
 
-上面我们分析了BERT的网络结构，其核心就是Transformer的Encoder layer，因此我们也主要针对Encoder layer进行搭建、部署以及优化。
+Previously, we analyzed the network structure of BERT, where the core component is the Transformer’s Encoder layer. Therefore, our focus is primarily on the construction, deployment, and optimization of the Encoder layer.
 
-首先对上面Encoder的算子计算过程进行整理：
+First, let’s organize the operator computation process in the Encoder layer:
 
-1. Tokenizer 与Embedding
+1. Tokenizer and Embedding
    $$
    X = Tokenizer(text) \\
    X = PositionalEmbeddings(X) + TokenEmbedding(X) + SegmentEmbedding(X) \\ X.shape = [B, S, D]
@@ -462,160 +440,153 @@ model = BERTForMaskedLM.from_pretrained(BERT_PATH, return_dict = True)
    $$
    Q = Linear_q(X) \\ K = Linear_k(X) \\ V = Linear_v(X)\\ X_{attention} = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
    $$
-   （这里如果是Muti-head Attention，在后面还有一个Linear层）
+   (If it’s Multi-head Attention, there is an additional Linear layer afterward.)
 
-3. 残差连接以及Layer Norm
+3. Residual Connection and Layer Norm
    $$
    X_{attention} = X_{attention} + X \\ X_{attention} = Layer Norm(X_{attention})
    $$
 
-4. FFN以及残差连接和Layer Norm
+4. FFN, Residual Connection, and Layer Norm
    $$
    X_{hidden} = Linear(ReLU(Linear(X_{attention}))) \\ X_{hidden} = X_{attention} + X_{hidden} \\ X_{hidden} = LayerNorm(X_{hidden})
    $$
 
-可以看到，上面包含了5种算子，分别是`Embedding` `Linear` `Softmax` `LayerNorm` `ReLU`，其中最为耗时的就是 `Linear`层也就是矩阵乘运算。
+We can see that there are five types of operators: `Embedding`, `Linear`, `Softmax`, `LayerNorm`, and `ReLU`. Among them, the most time-consuming is the `Linear` layer, which involves matrix multiplication.
 
-具体的算子执行流程如下图所示：
+The specific operator execution flow is illustrated in the figure below:
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240612223428972.png" alt="image-20240612223428972" width="300" height = "600" />
 
-GEMM0到GEMM3指的是连续四个矩阵乘法（GEMM全称General Matrix Multiply，即通用矩阵乘法），它们在上图中从GEMM #0数到GEMM #3。另外两个Batched GEMM是Self- Attention的一部分（这里Batch Gemm原因是muti head attention 有多组计算，可以进行拼batch提高效率），因此与softmax一起作为一个整体在上图中被称为MHA（Multi-Head Attention）。
+GEMM0 to GEMM3 refer to four consecutive matrix multiplications (GEMM stands for General Matrix Multiply), and they are numbered from GEMM #0 to GEMM #3 in the diagram above. The other two Batched GEMMs are part of the Self-Attention (the reason for using Batched GEMM is that multi-head attention has multiple groups of computations, which can be batch processed to improve efficiency), and thus, along with Softmax, are collectively referred to as MHA (Multi-Head Attention) in the diagram.
 
-下图展示了两种序列长度（左256，右1024）下Encoder layer的profile。性能分析结果显示，计算密集型的GEMM操作占了两个测试案例总执行时间的61%和40%。Attention模块，包括一个softmax和两个批处理的GEMM，是其中最耗时的部分，随着序列长度从256增加到1024，Attention模块占总执行时间的49%，而其余的访存密集型操作（层归一化、加偏置和激活）只占11%-17%。
+The following figure shows the profile of the Encoder layer under two sequence lengths (left: 256, right: 1024). Performance analysis results indicate that computation-intensive GEMM operations account for 61% and 40% of the total execution time in the two test cases, respectively. The Attention module, including a Softmax and two Batched GEMMs, is the most time-consuming part. As the sequence length increases from 256 to 1024, the Attention module occupies 49% of the total execution time, while the remaining memory-bound operations (Layer Normalization, adding bias, and activation) only take up 11%-17%.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240612234601998-8207165.png" alt="image-20240612234601998" style="zoom:50%;" />
 
+Given the above analysis, we can optimize the Encoder's inference by focusing on four main points: Batch GEMM, optimizing MHA, operator fusion, and Varlen. Below is a detailed introduction to each of these optimizations.
 
+### 3.3 Optimization 1: Batch GEMM
 
-鉴于上述分析，我们对Encoder做推理优化主要有4个点可以做优化，分别是做Batch GEMM、优化MHA、算子融合以及Varlen。下面将详细展开介绍。
-
-### 3.3 优化1：Batch Gemm
-
-在前面的计算过程中, 下面的这三个矩阵乘
+In the computation process described earlier, the following three matrix multiplications occur:
 $$
 Q = Linear_q(X) \\ K = Linear_k(X) \\ V = Linear_v(X)
 $$
 
-这三个矩阵都有相同的shape，且输入相同，因此将三个权重矩阵拼接到一起，使用cuBLAS的Bathed GEMM，能够增加带宽，提高计算效率。
+These three matrices have the same shape and share the same input. Therefore, concatenating the three weight matrices together and using cuBLAS's Batched GEMM can increase bandwidth and improve computational efficiency.
 
-通常矩阵乘调用cuBLAS的`cublasGemmEx`，在这里可以调用 `cublasGemmStridedBatchedEx`实现更高效，两者都是 NVIDIA cuBLAS提供的 GEMM（General Matrix Multiply, 通用矩阵乘法）接口。两者之间的主要区别如下：
+Typically, matrix multiplication calls cuBLAS's `cublasGemmEx`. Here, `cublasGemmStridedBatchedEx` can be used for greater efficiency. Both are GEMM (General Matrix Multiply) interfaces provided by NVIDIA's cuBLAS. The main differences between the two are as follows:
 
 1. `cublasGemmEx`：
 
-该函数用于计算通用矩阵乘法，即 $C = α × A × B + β × C$。此函数可以在不同精度和数据类型的输入矩阵上执行计算。它通常用于执行单个矩阵乘法操作。该接口对使用不同精度和混合数据类型的矩阵运算具有优势，支持高性能计算。
+This function is used for general matrix multiplication, i.e. $C = α × A × B + β × C$。This function can perform computations on input matrices with different precisions and data types. It is commonly used for a single matrix multiplication operation. This interface has the advantage of high-performance computation using different precisions and mixed data types.
 
 2. `cublasGemmStridedBatchedEx`:
 
-该函数用于执行批量矩阵乘法，即在给定一组矩阵（称为批次）时一次性完成所有矩阵的乘法运算。每个批次的矩阵乘法按照 $C_i = α × A_i × B_i + β × C_i$ 计算，其中 $A_i$、$B_i$ 和 $C_i$ 分别为每个批次中的输入和输出矩阵。使用一种称为“strided”内存布局的机制。这意味着输入矩阵 $A_i$, $B_i$ 和输出矩阵 $C_i$ 在内存中存储为连续的块。每个连续块之间都具有固定跨度（stride）。这通常可以提高内存访问和计算性能。
+This function performs batched matrix multiplication, i.e., completing all matrix multiplication operations at once given a set of matrices (referred to as a batch). Each batch's matrix multiplication is calculated as $C_i = α × A_i × B_i + β × C_i$, where $A_i$、$B_i$ and $C_i$ are the input and output matrices for each batch. It uses a mechanism called "strided" memory layout, meaning that the input matrices $A_i$, $B_i$ and output matrices $C_i$ are stored in contiguous blocks in memory, with a fixed stride between each consecutive block. This can generally improve memory access and computational performance.
 
-该处的优化需要将$W^Q$, $W^K$, $W^V$即模型权重拼接在一起，在显存上保证是连续的。
+This optimization requires concatenating $W^Q$, $W^K$, $W^V$ (i.e., the model weights) together and ensuring they are contiguous in GPU memory.
 
-### 3.4 优化2：MHA
+### 3.4 Optimization 2: MHA
 
-在self-Attention那里，也可以做算子融合。将以下几个操作全部融合为一个算子。
+In the Self-Attention, operator fusion can also be applied. The following operations can all be fused into one operator:
 $$
 Q = Linear_q(X) \\ K = Linear_k(X) \\ V = Linear_v(X)\\ X_{attention} = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
 $$
-这里做优化的原因有两个：一个是Attention非常占用显存，$QK^T$​ 的shape为$[B, N, S, S]$，当$S$很大时，这部分非常占用显存；另一个原因是这里的操作是memory bound，不能充分利用计算资源。优化的方式有多种，一种是TensorRT的`MHA`, 一种是`Flash-Attention`，一种是xformers的 `memory_efficient_attention`，后两者是有相关的论文和开源代码的，下面对这三种Attention优化进行简单介绍。
+There are two reasons for this optimization: first, Attention is very memory-intensive, as $QK^T$​ has a shape of $[B, N, S, S]$, which can be very memory-consuming when S is large; the second reason is that this operation is memory-bound, meaning it cannot fully utilize computational resources. There are various optimization methods, including TensorRT’s `MHA`, `Flash-Attention`, and xformers' `memory_efficient_attention`. Below is a brief introduction to these three Attention optimizations.
 
-这三种Attention机制都是为了优化Transformer模型中的多头注意力（Multi-Head Attention, MHA）计算而设计的。它们各自采用不同的方法来提高效率、减少内存占用或加速计算。
+These three Attention mechanisms are all designed to optimize the Multi-Head Attention (MHA) computation in Transformer models. They each take different approaches to improving efficiency, reducing memory usage, or accelerating computation.
 
-1. TensorRT的`MHA`:
+1. TensorRT's `MHA`:
 
-   - TensorRT中的MHA优化可能包括内核融合、精度校准、层自动调整等技术，以减少在执行多头自注意力时的延迟和内存占用。
-   - TensorRT的MHA有多个版本，但都以一种二进制文件的开源方式，根据不同的机器和需求，编译了众多二进制文件，放入Plugin，看不到原生实现。
-   - 使用方式的话可以编译该TensorRT的Plugin，插入到项目中。
+ - TensorRT’s MHA optimization may include techniques like kernel fusion, precision calibration, and automatic layer adjustment to reduce latency and memory usage when executing multi-head self-attention.
+ - TensorRT's MHA has multiple versions, all provided as open-source binaries. Various binary files are compiled based on different machines and needs and placed into a Plugin. The native implementation is not visible.
+ - To use it, you can compile the TensorRT Plugin and insert it into your project.
    - <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240613214918841.png" alt="image-20240613214918841" />
 
 2. `Flash-Attention`:
 
-   - Flash-Attention是一种用于加速Transformer模型中自注意力计算的技术。它通过减少全局同步点和优化内存访问模式来提高效率。Flash-Attention特别关注减少在大型模型和长序列上的注意力计算的内存占用，使得在有限的硬件资源上运行大型模型成为可能。它是为了在NVIDIA的GPU上实现高效的自注意力计算而设计的。
+   - Flash-Attention is a technique designed to accelerate self-attention computation in Transformer models. It improves efficiency by reducing global synchronization points and optimizing memory access patterns. Flash-Attention specifically focuses on reducing memory usage during attention computation on large models and long sequences, enabling large models to run on limited hardware resources. It is designed for efficient self-attention computation on NVIDIA GPUs.
+   - Code：https://github.com/Dao-AILab/flash-attention  Paper：https://arxiv.org/abs/2205.14135
+   - In simple terms, Flash-Attention fully utilizes the GPU's memory architecture by tiling the input and placing it into faster-shared memory and registers, ensuring data is constantly stored in faster memory devices. Additionally, the operations of $QK^T$ and row-wise Softmax computation are fused. This not only fully utilizes computational resources but also reduces the memory usage of the large attention scores $[B, N, S, S]$, meaning memory usage now grows linearly, allowing for training and inference with longer sequence lengths.
 
-   - 代码：https://github.com/Dao-AILab/flash-attention  论文：https://arxiv.org/abs/2205.14135
+   - Flash-Attention has two versions, Flash-Attention1 and Flash-Attention2. Version 2 is optimized in terms of computation compared to version 1, resulting in faster speeds.
 
-   - 简单来讲就是将Flash- Attention充分利用了GPU的内存体系结构，将输入不断tiling，放入更快的shared memory以及寄存器，让数据不断往访存更快的存储设备上去，另外将 $QK^T$ 与对行计算Softmax的操作进行融合，这样一方面充分利用了计算能力，另一方面将大尺寸的attention scores $[B, N, S, S]$融化掉了，意味着显存的使用降为了线性增长，能够进行更长的seq_length的训练和推理。
-
-   - Flash-Attention有两个版本，分别是Flash-Attention1与Flash-Attention2，版本2相比于1从计算方式上进行优化，速度更快了。（更为详细的讲解可以看知乎上的文章：https://zhuanlan.zhihu.com/p/645376942，这里不详细展开）
-
-   - 使用方式可以直接从开源仓库进行调用或者修改，或者使用Torch2.0以上版本，Torch的`Torch.nn.functional.scaled_dot_product_attention`已经实现了Flash-Attention2，直接调用即可，或者从源仓库编译为TensorRT Plugin，插入项目中。
+   - To use, you can directly call or modify the open-source repository, or use Torch 2.0 and above versions. Torch’s `torch.nn.functional.scaled_dot_product_attention` already implements Flash-Attention2, so you can call it directly, or compile it from the source repository as a TensorRT Plugin and insert it into your project.
 
      ![image-20240613215337965](https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240613215337965.png)
 
      
 
-3. xformers的`memory_efficient_attention`:
+3. xformers' `memory_efficient_attention`:
 
-   - xformers是一个模块化的Transformer库，它提供了多种用于提高Transformer模型效率的组件。`memory_efficient_attention`是xformers中的一个特性，它实现了一种内存高效的注意力机制。这种机制通过使用重新计算（recomputation）策略和优化的数据布局来减少在执行注意力操作时的内存占用。这对于训练大型模型特别有用，因为它可以减少显存的使用，从而允许在单个GPU上训练更大的模型或使用更长的序列。
-   - 代码：https://github.com/facebookresearch/xformers 论文：https://arxiv.org/pdf/2112.05682
-   - 在SD 、SVD等方向xformer的`memory_efficient_attention`通常会更好。
-   - 使用方式可以从xformers中调用，也可以在Torch的`Torch.nn.functional.scaled_dot_product_attention`中调用（不过与xformers中实现不太一样），该函数内部实现了3种Attention，会根据输入的shape自动选择attention实现。
+   - xformers is a modular Transformer library that provides various components to improve the efficiency of Transformer models. `memory_efficient_attention` is a feature in xformers that implements a memory-efficient attention mechanism. This mechanism reduces memory usage during attention operations by employing a recomputation strategy and optimized data layout. This is particularly useful for training large models, as it allows for training larger models or using longer sequences on a single GPU.
+   - Code：https://github.com/facebookresearch/xformers Paper：https://arxiv.org/pdf/2112.05682
+   - In directions like SD and SVD, xformers' `memory_efficient_attention` usually performs better.
+   - To use, you can call it from xformers, or Torch’s `torch.nn.functional.scaled_dot_product_attention` (though it’s implemented slightly differently in xformers). This function implements three types of attention and automatically selects the attention implementation based on the input shape.
 
-### 3.5 优化3：Kernel fuse
+### 3.5 Optimization 3：Kernel fusion
 
-这里的Kernel Fuse主要有两种，一种是 Add bias与Layer norm的融合，一种是Gemm add bias与 Activation的融合。算子融合的本质在于降低访存的耗时，通过计算方式的融合，来减少访存的次数或者数据放在更快的存储设备上计算。
+Kernel fusion primarily involves two types of operations: the fusion of Add Bias and Layer Norm, and the fusion of GEMM with Add Bias and Activation. The essence of operator fusion is to reduce the time spent on memory access by combining computational operations to minimize memory access frequency or to perform computations in faster storage.
 
 **Add bias & Layer norm**
 
-从上面算子的执行图中可以看到，两个layernorm前面都有矩阵乘，而矩阵乘会有bias，通过算子融合将add bias和layer norm一起实现，能够更加的高效。
+As seen in the operator execution diagram above, there are matrix multiplications preceding the two layer norm operations, and matrix multiplication usually involves bias. By fusing the add bias operation with layer norm, we can achieve higher efficiency.
 
-从上面的profile中可以看到这些操作分别占到了序列长度为256和1024时总执行时间的10%和6%。一般的实现引入了两轮内存访问来加载和存储张量。实现算子融合内核后，它只需要一轮全局内存访问就可以完成层归一化和加偏置。这个子内核的内核融合提高了性能61%，相应地，对于序列长度在128到1024之间的单层BERT变换器性能平均提高了3.2%。（数据来源于ByteTransformer）
+From the profile above, these operations account for 10% and 6% of the total execution time when the sequence lengths are 256 and 1024, respectively. The general implementation involves two rounds of memory access to load and store the tensors. By implementing operator fusion in the kernel, only one round of global memory access is needed to complete layer normalization and bias addition. This sub-kernel's fusion improved performance by 61%, which, correspondingly, increased the performance of a single-layer BERT transformer by an average of 3.2% for sequence lengths between 128 and 1024 (data from ByteTransformer).
 
 **GEMM with add bias & Activation**
 
-添加偏置和激活函数：对于序列长度分别为256和1024，这些操作分别占总执行时间的7%和5%。通过矩阵乘法进行投影后，结果张量将与输入张量相加，并使用GELU激活函数进行逐元素激活。这里的融合实现不是将GEMM（通用矩阵乘法）的输出存储到全局内存然后再次加载它以进行添加偏置和激活，而是通过实现一个定制的融合CUTLASS ，在寄存器级别重用GEMM结果矩阵。这里GEMM完美地隐藏了偏置和GELU的内存延迟进入GEMM。在这一步之后，提高了单层BERT的性能约3.8%。
+Add bias and activation: For sequence lengths of 256 and 1024, these operations account for 7% and 5% of the total execution time, respectively. After matrix multiplication projection, the result tensor is added to the input tensor and then element-wise activated using the GELU activation function. The fusion implementation here does not store the output of the GEMM (General Matrix Multiply) to global memory and then reload it for adding bias and activation. Instead, it reuses the GEMM result matrix at the register level by implementing a customized fused CUTLASS. Here, the GEMM perfectly hides the memory latency of bias addition and GELU activation entering the GEMM. As a result, the performance of a single-layer BERT was improved by about 3.8%.
 
-
-
-下图为进行算子融合后的算子执行图，可以看到有两个**add bias & Layer norm**，1个**GEMM with add bias & activation**，分别使用了一个算子实现，而不是之前的多个算子。
+The following figure shows the operator execution diagram after kernel fusion. You can see two Add Bias & Layer Norm and one GEMM with Add Bias & Activation, each implemented using a single operator rather than multiple operators as before.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240612232856129.png" alt="image-20240612232856129"  width="300" height = "600" />
 
-### 3.6 优化4：Varlen
+### 3.6 Optimization 4：Varlen
 
-该优化针对服务场景有众多的请求，而请求的输入大小有比较大的差异，一般处理都会打Batch，而对于一批数据通常采用padding的方式将这批数据的$S$维度pad到输入最长的数据。如果输入长度的方差比较大，这种情况下就带来了冗余计算，Varlen就是解决这种场景下的问题。
+This optimization targets service scenarios with numerous requests where the input sizes vary significantly. Typically, these requests are batched, and the sequence length dimension S is padded to match the length of the longest input in the batch. If the variance in input length is large, this can lead to redundant computations. Varlen addresses this issue in such scenarios.
 
-这里有两种做法，一种是将所有输入拼接到一条上，将Batch设置为1，使用数据长度的前缀和进行标记，另一种做法是多条Batch，但标记更为复杂些。
+There are two approaches: one is to concatenate all inputs into a single sequence, set the batch size to 1, and use a prefix sum to mark the data length. The other approach involves multiple batches but with more complex markings.
 
 **TensorRT**
 
-下图为第一种做法的示意图，该方案在TensorRT以及TCB中都有提到，对于Transformer的Encoder Layer中，在计算过程中大部分算子都依赖于最后一个维度$D$，而这里的修改了前两个维度$[B, S]$。因此只需要修改掉前两个维度会影响到的算子即可，这里受到影响的是Attention处的Mask以及softmax操作，这里的Mask跟原本实现的不一样了，看下图可以看出mask的区域发生了变化，Softmax的操作也会又些变化。其他基本一致。
+The following diagram illustrates the first approach. This method is mentioned in both TensorRT and TCB. In the Transformer Encoder Layer, most operators depend on the last dimension D, while here, the first two dimensions [B, S] are modified. Therefore, only the operators affected by the first two dimensions need to be modified. This mainly impacts the Mask and Softmax operations in the Attention mechanism. The Mask implementation differs from the original, as shown in the diagram below, where the mask region changes and the Softmax operation also changes slightly. Everything else remains the same.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/5-Figure6-1.png" alt="img" width="334" height = "380" />
 
 **ByteTransformer**
 
-另一种实现是ByteTransformer提出的，实现更为复杂些，但性能更好。从下图的padding机制可以看出，需要一个数组来标记出来每个输入的位置。相比于第一种直接拼到一个维度，后续的处理也会不同。上面有提到对于Encoder Layer中受到影响的是Attention实现，第一种方法只需要修改mask以及softmax的处理即可。而ByteTransformer的方式明显不能通过修改maks来实现。
+Another implementation is proposed by ByteTransformer, which is more complex but offers better performance. As seen in the padding mechanism diagram below, an array is needed to mark the position of each input. Compared to the first method, which simply concatenates into one dimension, the subsequent processing will differ. It was mentioned earlier that the Attention implementation is affected in the Encoder Layer. The first method only requires modifying the mask and Softmax processing. However, the ByteTransformer method cannot be achieved by simply modifying the mask.
 
-ByteTransformer有两个版本，第一个版本是在处理Attention时将拼接的输出恢复到padding的模式，在进行处理，这种方式效率很低，还是会有很多冗余计算。第二个版本对这里进行了优化，在Cutlass的Group gemm基础上进行了优化，能够实现多个不同尺寸的矩阵乘同时进行。这里面内容很多，就不详细展开了。
+ByteTransformer has two versions. The first version restores the concatenated output to the padding mode during Attention processing, which is inefficient and still involves a lot of redundant computation. The second version optimizes this by improving Group GEMM in Cutlass, allowing simultaneous computation of multiple matrices of different sizes.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240613223803438-8289487.png" alt="image-20240613223803438" width="420" height = "340" />
 
 
+## 4. BERT Inference Optimization with TensorRT
 
-## 4. BERT-TensorRT的推理优化
+TensorRT is a high-performance deep learning inference platform provided by NVIDIA, specifically designed for production environments. TensorRT can significantly enhance the speed, efficiency, and performance of deep learning models on NVIDIA GPUs. It includes an optimizer and a runtime environment that can convert trained deep learning models into optimized inference engines. This process involves various optimization strategies such as layer and tensor fusion, kernel auto-tuning, and precision calibration. TensorRT supports three precision modes: FP32, FP16, and INT8, and provides precision calibration tools to ensure that model accuracy is maintained even when precision is reduced to improve performance. Additionally, TensorRT supports dynamic input, which can handle input tensors of varying sizes, making it particularly useful for processing images of different resolutions or sequences of varying lengths. If standard layers are insufficient to cover specific model needs, TensorRT offers a plugin API that allows developers to create custom layers.
 
-TensorRT是NVIDIA提供的一个高性能深度学习推理（inference）平台，它专门用于生产环境中。TensorRT可以显著提高深度学习模型在NVIDIA GPU上的推理速度、效率和性能。TensorRT包含一个优化器和一个运行时环境，可以将训练好的深度学习模型转换为优化的推理引擎。这个过程涉及层和张量的融合、内核自动调整、精度校准等多种优化策略，TensorRT支持FP32、FP16和INT8这三种精度模式，并提供了精度校准工具，以确保即使在降低精度以提高性能的情况下，也能保持模型的准确性，并且TensorRT支持动态输入，即可以处理可变大小的输入张量，这对于处理不同分辨率的图像或可变长度的序列特别有用。另外如果标准层不足以覆盖某些特定的模型需求，TensorRT提供了插件API，允许开发者自定义层。
+Unfortunately, TensorRT is currently only available on NVIDIA GPUs and cannot be applied to other manufacturers' GPUs. Other major manufacturers have also launched inference platforms tailored to their GPUs.
 
-可惜的是，目前TensorRT只能在NVIDIA的GPU上使用，无法适配应用于其他厂家的GPU。各大厂家也纷纷推出了针对自己GPU的推理平台。
+Next, we will use TensorRT to optimize BERT inference. This section introduces two methods for converting a model to TensorRT: one using the TensorRT API for network construction and the other using ONNX for conversion. Additionally, it covers how to write a TensorRT Plugin and use it in a network, as well as how to accelerate using FP16 and INT8 in TensorRT.
 
-下面将使用TensorRT对BERT进行推理优化。这里介绍两种将模型转换为TensorRT的方式，一种是使用TensorRT API搭建，另一种是使用ONNX进行转换；另外介绍下如何编写TensorRT Plugin，以及如何在网络中使用；最后介绍下TensorRT使用FP16、INT8进行加速的方式。
+### 4.1 Overview of the TensorRT Workflow
 
-### 4.1 使用TensorRT的简要流程
+The general steps for building TensorRT are as follows:
 
-构建TensorRT大概步骤有以下9步
+Step 1: Create a logger
+Step 2: Create a builder
+Step 3: Create a network
+Step 4: Add layers to the network
+Step 5: Set and mark the output
+Step 6: Create a config and set the maximum batch size and workspace size
+Step 7: Create an engine
+Step 8: Serialize and save the engine
+Step 9: Release resources
 
-step1：创建logger
-step2：创建builder
-step3：创建network
-step4：向network中添加网络层
-step5：设置并标记输出
-step6：创建config并设置最大batchsize和最大工作空间
-step7：创建engine
-step8：序列化保存engine
-step9：释放资源
-
-如下面代码所示
+An example is shown in the following code:
 
 ```python
 import TensorRT as trt
@@ -635,67 +606,58 @@ builder.max_workspace_size = 1 << 30
 engineString = builder.build_serialized_network(network, config)
 ```
 
-其中工作量最大的是构建网络，针对不同的网络，需要使用对应的算子去搭建，随后去按照流程去build engine。
+The most labor-intensive part is building the network. Depending on the network, you need to use the corresponding operators to construct it, and then follow the process to build the engine.
 
-搭建网络一般有两种方式，分别是使用API搭建以及使用ONNX进行转换。每种方法都有其优缺点，具体如下：
+There are two main ways to build a network: using the TensorRT API or converting from ONNX. Each method has its pros and cons, as outlined below:
 
-**使用 TensorRT API 直接搭建网络**：
+**Building the Network Directly Using the TensorRT API:**
 
-优点：
+Advantages:
 
-- 直接使用 TensorRT API 可以充分利用 TensorRT 的所有优化功能，包括层融合、精度混合（FP32、FP16、INT8）等；
-- 可以手动调整和优化每一层的参数和配置，以获得最佳性能；
+ - Direct use of the TensorRT API allows full utilization of all TensorRT optimization features, including layer fusion, precision mixing (FP32, FP16, INT8), etc.
+ - You can manually adjust and optimize the parameters and configurations of each layer to achieve the best performance.
+ - You have complete control over every layer and operation in the network, making it suitable for highly customized application scenarios.
+ - You can directly use various advanced features and plugins provided by TensorRT.
+ - You can finely control memory allocation, data flow, and the execution order of the computation graph, which is ideal for applications with extremely high-performance requirements.
+   
+Disadvantages:
 
-- 可以完全控制网络的每一层和每一个操作，适合需要高度定制化的应用场景；
-- 可以直接使用 TensorRT 提供的各种高级功能和插件；
+ - Requires deep understanding of the TensorRT API and low-level implementation, making development and debugging more complex.
+ - For complex network structures, manual coding can be very tedious and error-prone.
+ - Code written directly with the TensorRT API is usually tied to specific hardware and software environments, and porting to other platforms may require significant modifications.
+ - Due to the high level of customization in the code, the maintenance and update costs can be high.
 
-- 可以精细地控制内存分配、数据流和计算图的执行顺序，适合对性能要求极高的应用。
+**Parsing TensorRT Networks Using ONNX:**
 
-缺点：
+Advantages:
 
-- 需要深入了解 TensorRT API 和底层实现，开发和调试的复杂度较高；
-- 对于复杂的网络结构，手动编写代码可能会非常繁琐和容易出错；
+ - You can use high-level deep learning frameworks (such as PyTorch, TensorFlow) to build and train models, then export them in ONNX format.
+ - ONNX models can be directly imported into TensorRT, simplifying the development process.
+ - ONNX is an open standard format that supports multiple deep learning frameworks and hardware platforms.
+ - Using ONNX makes it easier to port models across different platforms.
+ - ONNX has broad community support and a rich ecosystem of tools, allowing you to leverage existing tools for model conversion, optimization, and deployment.
+ - Building and training models with high-level frameworks results in more concise code and lower maintenance costs.
+   
+Disadvantages:
 
-- 直接使用 TensorRT API 编写的代码通常与特定的硬件和软件环境绑定，移植到其他平台可能需要大量修改；
+ - Although TensorRT optimizes ONNX models, the performance may not match that of manual optimization.
+ - Some advanced optimizations and custom operations may not be expressible through ONNX, requiring additional plugins or manual adjustments.
+ - You need to ensure that the deep learning framework you're using and TensorRT both support the ONNX format.
+ - Some new features or custom layers may not be supported in ONNX, leading to model conversion failures or performance degradation.
+ - If problems occur when importing an ONNX model, debugging can be more complicated, requiring knowledge of both the ONNX format and TensorRT's internal implementation.
 
-- 由于代码高度定制化，后期的维护和更新成本较高。
+In summary:
 
-**使用 ONNX 解析 TensorRT 网络**
+- **Building Networks Directly Using the TensorRT API**: suitable for application scenarios requiring high customization and performance optimization, but the development and maintenance costs are high.
+- **Parsing TensorRT Networks Using ONNX**: suitable for scenarios where simplifying the development process, improving cross-platform compatibility, and reducing maintenance costs are priorities, though there may be trade-offs in performance and flexibility.
 
-优点：
+Which method to choose depends on the specific application needs, development resources, and performance requirements. For most applications, using ONNX to parse TensorRT networks is a more straightforward and efficient choice, while for applications requiring extreme performance optimization, direct use of the TensorRT API can be considered.
 
-- 可以使用高层次的深度学习框架（如 PyTorch、TensorFlow）来构建和训练模型，然后导出为 ONNX 格式；
-- ONNX 模型可以直接导入 TensorRT，简化了开发流程；
+### 4.2 Building BERT Using API
 
-- ONNX 是一个开放的标准格式，支持多种深度学习框架和硬件平台；
-- 使用 ONNX 可以更容易地在不同平台之间移植模型；
+Typically, networks are built using Torch, but when using TensorRT for inference, you need to build the network using its API, which differs significantly from Torch's API.
 
-- ONNX 有广泛的社区支持和丰富的工具生态系统，可以利用现有的工具进行模型转换、优化和部署；
-
-- 使用高层次框架构建和训练模型，代码更简洁，维护成本较低。
-
-缺点：
-
-- 虽然 TensorRT 对 ONNX 模型进行了优化，但可能无法达到手动优化的性能；
-- 某些高级优化和自定义操作可能无法通过 ONNX 表达，需要额外的插件或手动调整；
-
-- 需要确保所使用的深度学习框架和 TensorRT 都支持 ONNX 格式；
-- 某些新特性或自定义层可能在 ONNX 中不支持，导致模型转换失败或性能下降；
-
-- 如果在导入 ONNX 模型时遇到问题，调试可能会比较复杂，需要了解 ONNX 格式和 TensorRT 的内部实现。
-
-简单来讲就是：
-
-- **使用 TensorRT API 直接搭建网络** 适合需要高度定制化和性能优化的应用场景，但开发和维护成本较高。
-- **使用 ONNX 解析 TensorRT 网络** 适合希望简化开发流程、提高跨平台兼容性和降低维护成本的应用场景，但可能在性能和灵活性上有所妥协。
-
-选择哪种方式取决于具体的应用需求、开发资源和性能要求。对于大多数应用，使用 ONNX 解析 TensorRT 网络是一个更为简便和高效的选择，而对于需要极致性能优化的应用，可以考虑直接使用 TensorRT API。
-
-### 4.2 使用API搭建BERT
-
-通常搭建网络都是使用Torch，而使用TensorRT进行推理就需要用它的API去搭建一套网络，两者API差别还是比较大的。
-
-下面以几个例子来介绍TensorRT的API
+Below are some examples to introduce TensorRT's API:
 
 **Relu**
 
@@ -712,9 +674,9 @@ def addReLU(self, layer, x, layer_name=None, precision=None):
     return x
 ```
 
-上面代码通过调用TRT的API `self.network.add_activation` 添加了一个激活层，设置type为`trt.ActivationType.RELU` ，这里支持多种激活函数如`trt.ActivationType.TANH`等，通过设置不同的type进行选择。
+In the code above, a ReLU activation layer is added by calling TensorRT's `self.network.add_activation`, with the activation type set to `trt.ActivationType.RELU`. TensorRT supports various activation functions such as `trt.ActivationType.TANH`, and different types can be selected by setting the appropriate type.
 
-随后`layer_post_process`函数去设置layer.name（在进行debug以及build过程中会有用处），并对shape进行了检查，最后使用`trt_layer.get_output(0)`获取到这层的输出并返回。
+The `layer_post_process` function is then used to set the layer name (which is helpful during debugging and building processes) and to check the shape. Finally, the output of this layer is obtained using `trt_layer.get_output(0)` and returned.
 
 **Reshape**
 
@@ -734,7 +696,7 @@ def addReshape(self, x, reshape_dims, layer_name=None, precision=None):
     return x
 ```
 
-Reshape在TensorRT中通过`self.network.add_shuffle` API 来实现，并且需要设置目标shape，通过`trt_layer.reshape_dims` 来进行设置，这点跟Torch的使用方法很不同。后续是类似的操作，进行后处理返回该层的输出。
+Reshape in TensorRT is implemented using the `self.network.add_shuffle` API, and you need to set the target shape through `trt_layer.reshape_dims`. This is quite different from how reshaping is done in Torch. The subsequent steps are similar, involving post-processing and returning the output of the layer.
 
 **Linear**
 
@@ -789,13 +751,13 @@ def addLinear(self, x, weight, bias, layer_name=None, precision=None):
     return x
 ```
 
-这里首先检查输入张量$x$的维度是否至少是3维的，这是因为全连接层至少需要一个批次维度和两个特征维度（例如，批次大小、特征数）。如果没有提供层名称，它会使用默认的`"nn.Linear"`。使用`trt.Dims()`获取输入的维度信息，根据输入张量的维度，函数计算了在全连接层之前和之后需要的reshape维度。这是为了确保全连接层可以正确地处理输入数据。在添加全连接层之前，代码首先添加了一个shuffle层（`self.network.add_shuffle`）来改变输入张量的形状，使其适合全连接层的输入要求。然后，函数添加了一个全连接层(`self.network.add_fully_connected`)，其中使用提供的权重和偏置参数。全连接层之后，再次添加了一个shuffle层来将输出张量的形状改变回原来的维度（或者是适合后续操作的维度）。
+The code first checks whether the input tensor x has at least 3 dimensions, as fully connected layers require at least a batch dimension and two feature dimensions (e.g., batch size, number of features). If no layer name is provided, it defaults to `"nn.Linear"`. The function uses `trt.Dims()` to get the dimensionality information of the input. Based on the input tensor's dimensions, the function calculates the reshaping dimensions needed before and after the fully connected layer. This ensures that the fully connected layer can properly process the input data.
 
-后续还有Softmax Add等算子，实现思路是一致的，可以参考TensorRT的API进行调用，传入或者设置对应的参数。
+Before adding the fully connected layer, the code first adds a shuffle layer (`self.network.add_shuffle`) to change the shape of the input tensor to match the requirements of the fully connected layer. Then, it adds a fully connected layer (`self.network.add_fully_connected`), using the provided weight and bias parameters. After the fully connected layer, another shuffle layer is added to reshape the output tensor back to its original dimensions (or to a shape suitable for subsequent operations).
 
-这里我们再以上面的算子来搭建一个Block，以Encoder中的Self-Attention为例。
+Additional operators like Softmax and Add are implemented similarly. The same principles apply: you can reference TensorRT's API to call these functions, passing in or setting the appropriate parameters.
 
-**Self-Attention Block**
+Let's now build a block using the above operators, taking the Self-Attention mechanism from the Encoder as an example.
 
 ```python
 def self_attention_layer(network_helper, prefix, config, weights_dict, input_tensor, imask):
@@ -831,12 +793,15 @@ def self_attention_layer(network_helper, prefix, config, weights_dict, input_ten
     return attn
 ```
 
-1. 代码首先使用`addLinear`函数来生成$Q$、$K$、$V$矩阵。这些矩阵是通过将输入张量与权重矩阵相乘并添加偏置来计算的，其中权重矩阵是从模型权重中加载而来，放到weights_dict这个字典中，使用对应的key获取权重，另外TensorRT的权重一般使用numpy数组来加载。
-2. 使用`addShuffle`函数（来调整$Q$、$K$和$V$矩阵的形状，以便它们可以分割成多个头部（heads），这是多头注意力机制的一部分。这里的重塑操作是将每个矩阵分割成`num_heads`个头部，每个头部的大小是`head_size`。
-3. 代码使用`addMatMul`函数）来计算$Q$和$K$的点积，得到分数（scores）。这个分数表示输入序列中每个元素对其他元素的注意力权重，并通过除以`head_size`的平方根进行缩放。然后使用`addSoftmax`函数。再使用`addMatMul`函数将注意力权重（attn）与值（V）矩阵相乘，得到加权的值表示。
-4. 最后，使用`addShuffle`函数将输出转换回原始输入张量的形状。
+The code first uses the `addLinear` function to generate the Q, K, and V matrices. These matrices are calculated by multiplying the input tensor with weight matrices and adding biases, where the weight matrices are loaded from the model weights and stored in the `weights_dict` dictionary. The corresponding weights are retrieved using the appropriate key. Additionally, TensorRT weights are typically loaded using NumPy arrays.
 
-上面代码并没有完全组成一个Attention_layer, 因为还缺少一个线性层以及残差和layernorm层。下面代码完善了一个Attention_layer。
+The `addShuffle` function is then used to reshape the Q, K, and V matrices so that they can be split into multiple heads, which is a key part of the multi-head attention mechanism. The reshaping operation here divides each matrix into `num_heads`, with each head having a size of `head_size`.
+
+The code uses the `addMatMul` function to compute the dot product of Q and K, resulting in the scores. These scores represent the attention weights that each element in the input sequence gives to other elements. The scores are then scaled by dividing by the square root of `head_size`. After that, the `addSoftmax` function is used to normalize the scores. Finally, the `addMatMul` function multiplies the attention weights (attn) with the value (V) matrix to get the weighted value representation.
+
+Finally, the `addShuffle` function is used to reshape the output back to the original shape of the input tensor.
+
+The code above does not fully compose an attention layer since it lacks a linear layer, as well as the residual and layer normalization layers. The following code completes the attention layer.
 
 ```python
 def self_output_layer(network_helper, prefix, config, weights_dict, hidden_states, input_tensor):
@@ -854,17 +819,17 @@ def attention_layer(network_helper, prefix, config, weights_dict, input_tensor, 
     return out
 ```
 
-`self_output_layer` 函数构建了自注意力层的输出部分。与上面一样，`out_w` 和 `out_b` 是从`weights_dict`字典中获取的权重和偏置，用于线性变换（通常是全连接层）。随后将将线性变换的结果与`input_tensor`（残差连接的一部分）相加。最后读取参数`gamma` 和 `beta`，是从`weights_dict`获取的层归一化参数，添加LayerNorm层，并返回输出。
+The `self_output_layer function` constructs the output portion of the `self-attention layer`. Similar to the previous steps, `out_w` and `out_b` are the weights and biases retrieved from the weights_dict dictionary, used for the linear transformation (typically a fully connected layer). The result of the linear transformation is then added to the `input_tensor` as part of the residual connection. Lastly, the gamma and beta parameters, also retrieved from `weights_dict`, are used for layer normalization. A LayerNorm layer is added, and the output is returned.
 
-`attention_layer`这个函数构建了完整的自注意力层，其中包括自注意力计算和一个输出层。
+The `attention_layer` function builds the complete self-attention layer, which includes both the self-attention computation and an output layer.
 
-当然这只是Transformer Encoder中的一部分，并没有将完全的代码实现展示出来，展示了最为核心的Attention，其他模块的实现方式也是一致的。
+This is, of course, only part of the Transformer Encoder, focusing on the core Attention mechanism. The implementation approach for other modules is consistent with this method.
 
-最后网络搭建完成之后，设置build的参数，进行build，最后进行序列化保存到本地，在使用前进行反序列化，并设置输入进行推理就得到了输出。
+After the network is fully constructed, the build parameters are set, the network is built, and finally, the serialized engine is saved locally. Before using it, we deserialize the engine, set the input, and run inference to obtain the output.
 
-### 4.3 使用ONNX搭建BERT
+### 4.3 Building BERT Using ONNX
 
-使用ONNX来搭建BERT，相比于API，能够更为简单。这里有两个步骤：一是将Torch模型转换为ONNX，二是将ONNX转为TensorRT engine。
+Building BERT using ONNX is simpler compared to using the API. There are two main steps: first, converting the Torch model to ONNX, and second, converting the ONNX model to a TensorRT engine.
 
 **model2ONNX**
 
@@ -894,30 +859,30 @@ Torch.ONNX.export(model,                                            # model bein
 print("Model exported at ", export_model_path)
 ```
 
-这里最核心的是`Torch.ONNX.export`, 调用该函数将Torch模型转换为ONNX模型。
+The key function here is `Torch.ONNX.export`, which is used to convert a Torch model into an ONNX model.
 
-对以上代码该函数的参数进行以下说明：
+Here’s an explanation of the parameters used in this function:
 
-- `model`：要导出的BERT模型。
-- `args`：模型的输入参数。这里使用 `tuple(encoded_input.values())`，表示模型的输入是一个包含多个输入张量的元组。
-- `f`：导出模型的保存路径。
-- `opset_version`：导出的 ONNX 模型的操作集版本。
-- `do_constant_folding`：是否执行常量折叠优化。常量折叠是指在导出过程中将计算图中的常量表达式进行预计算，以优化模型。
-- `input_names`：模型的输入名称列表。
-- `output_names`：模型的输出名称列表。
-- `dynamic_axes`：动态轴的定义，用于表示输入和输出张量的可变长度。
+ - `model`: The BERT model to be exported.
+ - `args`: The input arguments for the model. In this case, tuple(encoded_input.values()) is used, indicating that the model’s input is a tuple containing multiple input tensors.
+ - `f`: The path where the exported model will be saved.
+ - `opset_version`: The version of the ONNX opset to use when exporting the model.
+ - `do_constant_folding`: Whether to perform constant folding optimization. Constant folding involves pre-computing constant expressions in the computation graph during export to optimize the model.
+ - `input_names`: A list of names for the model’s inputs.
+ - `output_names`: A list of names for the model’s outputs.
+ - `dynamic_axes`: Defines dynamic axes, which indicate variable-length input and output tensors.
 
-导出的ONNX可以使用Netron对节点进行可视化。下图为BERT模型其中一层的Self-Attention的部分算子。另外ONNX中算子与Torch中以及TensorRT中算子定义都不同，以至于导出和转换会有区别。
+The exported ONNX model can be visualized using Netron to inspect the nodes. The image below shows some of the operators in the Self-Attention part of one layer of the BERT model. Additionally, note that the operator definitions in ONNX differ from those in Torch and TensorRT, which may lead to differences during export and conversion.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/image-20240614224838204-8376520.png" alt="image-20240614224838204" width="520" height = "680" />
 
-**ONNX2TensorRT**
+**ONNX to TensorRT Conversion**
 
-这里有两种实现方式，一种是使用TensorRT自带的trtexec工具来转换，另一种是使用TensorRT API来实现。
+There are two ways to convert an ONNX model to TensorRT: using the built-in trtexec tool or using the TensorRT API.
 
-1. **使用 `trtexec` 命令**：
+1. **Using `trtexec` Command**：
 
-   `trtexec` 是 TensorRT 提供的一个命令行工具，用于快速将 ONNX 模型转换为 TensorRT 引擎，并进行推理测试。
+   `trtexec` is a command-line tool provided by TensorRT for quickly converting ONNX models to TensorRT engines and running inference tests.
 
    ```
    trtexec --ONNX=BERT.ONNX --saveEngine=BERT.engine --explicitBatch  \
@@ -926,21 +891,21 @@ print("Model exported at ", export_model_path)
            --maxShapes=input_ids:1x256,token_type_ids:1x256,input_mask:1x256
    ```
 
-   其中：
+In this command:
 
-   - `--ONNX=BERT.ONNX`：指定输入的 ONNX 模型文件。
-   - `--saveEngine=BERT.engine`：指定输出的 TensorRT 引擎文件。
-   - `--explicitBatch`：启用显式批次模式。
-   - `--minShapes` `--optShapes` `--maxShapes` 将为输入张量 `input_ids`、`token_type_ids` 和 `input_mask` 设置最小、最优和最大形状。
+   - `--ONNX=BERT.ONNX`: Specifies the input ONNX model file.
+   - `--saveEngine=BERT.engine`: Specifies the output TensorRT engine file.
+   - `--explicitBatch`: Enables explicit batch mode.
+   - `--minShapes`, `--optShapes`, `--maxShapes`: Set the minimum, optimal, and maximum shapes for the input tensors input_ids, token_type_ids, and input_mask.
 
-   **其他常用参数**：
+   **Other Common Parameters:**：
 
-   - `--fp16`：启用 FP16 精度。
-   - `--int8`：启用 INT8 精度（需要校准数据）。
-   - `--workspace=N`：设置最大 GPU 内存工作空间大小（以 MB 为单位）。
-   - `--batch=N`：设置批次大小。
+   - `--fp16`：Enables FP16 precision.
+   - `--int8`：Enables INT8 precision (requires calibration data).
+   - `--workspace=N`：Sets the maximum GPU memory workspace size (in MB).
+   - `--batch=N`：Sets the batch size.
 
-   例如，启用 FP16 精度并设置最大工作空间为 4096 MB：
+  For example, to enable FP16 precision and set the maximum workspace to 4096 MB:
 
    ```
    trtexec --ONNX=BERT.ONNX --saveEngine=BERT.engine --explicitBatch --workspace=4096 --fp16 \
@@ -949,7 +914,7 @@ print("Model exported at ", export_model_path)
            --maxShapes=input_ids:1x256,token_type_ids:1x256,input_mask:1x256
    ```
 
-2. **使用TensorRT API**
+2. **Using the TensorRT API**:
 
    ```python
    def ONNX2trt(ONNXFile, plan_name):
@@ -993,17 +958,17 @@ print("Model exported at ", export_model_path)
            fout.write(serialized_engine
    ```
 
-主要步骤如下：
+The main steps are as follows:
 
-1. 创建 TensorRT 的核心对象，包括日志记录器、构建器、配置对象、优化配置文件和网络对象。
-2. 解析指定的 ONNX 文件，并将其转换为 TensorRT 网络表示。
-3. 设置优化配置文件，定义输入张量的最小、最优和最大形状。
-4. 构建 TensorRT 引擎，并将其序列化为字节流。
-5. 将序列化的引擎保存到指定的文件路径。
+1. Create the core TensorRT objects, including the logger, builder, config object, optimization profile, and network object.
+2. Parse the specified ONNX file and convert it into a TensorRT network representation.
+3. Set the optimization profile by defining the minimum, optimal, and maximum shapes for the input tensors.
+4. Build the TensorRT engine and serialize it into a byte stream.
+5. Save the serialized engine to the specified file path.
 
-### 4.4 使用TensorRT推理及测试
+### 4.4 Inference and Testing with TensorRT
 
-以下`InferHelper` 类是一个帮助类，用于加载 TensorRT 引擎并执行推理。
+The `InferHelper` class is a helper class used to load a TensorRT engine and perform inference.
 
 ```python
 class InferHelper():
@@ -1053,35 +1018,33 @@ class InferHelper():
         return outputs
 ```
 
-`InferHelper` 类包含两个函数，一个是初始化函数，一个是推理函数。
+`InferHelper` class contains two functions: an initialization function and an inference function.
 
-初始化函数输入`plan_name` 是 TensorRT 引擎文件的路径， `trt_logger` 是 TensorRT 的日志记录器对象。处理步骤如下：
+The initialization function takes `plan_name`, the path to the TensorRT engine file, and `trt_logger`, a TensorRT logger object. The steps are as follows:
 
-1. 创建 TensorRT 运行时对象 `self.runtime`。
-2. 打开并读取 TensorRT 引擎文件。
-3. 反序列化引擎文件，创建引擎对象 `self.engine`。
-4. 创建执行上下文 `self.context`。
-5. 设置活动优化配置文件为 0。
+1. Create a TensorRT runtime object `self.runtime`.
+2. Open and read the TensorRT engine file.
+3. Deserialize the engine file and create an engine object `self.engine`.
+4. Create an execution context `self.context`.
+5. Set the active optimization profile to 0.
 
-`infer` 方法用于执行推理，接受一个输入张量列表 `inputs`。
+`infer` method is used to perform inference, accepting a list of input tensors `inputs`。
 
-推理函数步骤如下：
+The steps in the inference function are as follows:
 
-1. 获取输入张量的数量 `nInput`。
-2. 为每个输入张量分配 GPU 内存，并将数据从主机内存复制到设备内存。
-3. 设置每个输入张量的形状。
-4. 创建输出张量列表 `outputs`，并根据推理上下文中的绑定形状初始化输出张量。
-5. 为每个输出张量分配 GPU 内存。
-6. 检查推理上下文中的输出形状是否与预期的输出形状一致。如果不一致，记录错误日志并断言失败。
-7. 将推理结果从设备内存复制回主机内存。
-8. 打印输出张量的形状和元素和。
-9. 返回输出张量列表。
+1. Get the number of input tensors (nInput).
+2. Allocate GPU memory for each input tensor and copy the data from host memory to device memory.
+3. Set the shape for each input tensor.
+4. Create a list of output tensors (outputs) and initialize them according to the binding shapes in the inference context.
+5. Allocate GPU memory for each output tensor.
+6. Check if the output shapes in the inference context match the expected output shapes. If they don't match, log an error and assert failure.
+7. Copy the inference results from device memory back to host memory.
+8. Print the shape and sum of the elements of the output tensors.
+9. Return the list of output tensors.
 
-通过这个类，可以方便地使用 TensorRT 引擎进行推理，并处理输入和输出张量的内存管理。
+With this class, you can easily perform inference using the TensorRT engine while managing the memory of input and output tensors.
 
-
-
-BERT使用`InferHelper` 的方法如下：
+Using `InferHelper` with BERT:
 
 ```
 tokenizer = BERTTokenizer.from_pretrained('BERT-base-uncased')
@@ -1094,51 +1057,49 @@ output = infer_helper.infer(input_list)
 print(output)
 ```
 
-以上函数这段代码，首先使用预训练的 BERT tokenizer 对输入文本进行编码。然后初始化 `InferHelper` 对象，加载 TensorRT 引擎。紧接着准备输入数据，将 PyTorch 张量转换为 NumPy 数组。最后使用 `InferHelper` 对象执行推理，并打印推理结果。
+In this code, a pre-trained BERT tokenizer is used to encode the input text. Then, an `InferHelper` object is initialized, loading the TensorRT engine. Next, the input data is prepared by converting PyTorch tensors into NumPy arrays. Finally, the `InferHelper` object is used to perform inference, and the inference results are printed.
 
-**性能测试**
+**Performance Testing**
 
-`trtexec` 提供了许多参数来控制性能测试的行为。以下是一些常用参数：
+`trtexec` provides many parameters to control the performance testing behavior. Here are some commonly used parameters:
 
-- `--iterations=N`：设置要运行的推理次数。
-- `--duration=N`：设置测试的持续时间（以秒为单位）。
-- `--warmUp=N`：设置预热时间（以秒为单位）。
-- `--batch=N`：设置批次大小。
-
-使用方式：
+- `--iterations=N`：Set the number of inference iterations to run.
+- `--duration=N`：Set the duration of the test (in seconds).
+- `--warmUp=N`：Set the warm-up time (in seconds).
+- `--batch=N`：Set the batch size.
+  
+Usage example:
 
 ```
 trtexec --loadEngine=BERT.engine --batch=1 --shapes=input_ids:1x6,token_type_ids:1x6,input_mask:1x6 --fp16 --duration=60 --warmUp=10 --workspace=4096
 ```
 
-运行 `trtexec` 命令后，会看到一系列的输出，包括推理的平均延迟、吞吐量等性能指标。以下是一些关键指标的解释：
+After running the trtexec command, you will see a series of outputs, including performance metrics like average latency, throughput, etc. Here are some key metrics explained:
 
-- **Average latency**：平均延迟，表示每次推理的平均时间。
-- **Throughput**：吞吐量，表示每秒处理的推理次数。
-- **Host Walltime**：主机墙时间，表示整个测试过程的总时间。
-- **GPU Compute Time**：GPU 计算时间，表示在 GPU 上执行推理的总时间。
+- **Average latency**: The average time per inference.
+- **Throughput**: The number of inferences processed per second.
+- **Host Walltime**: The total time for the entire testing process.
+- **GPU Compute Time**: The total time spent performing inference on the GPU.
 
-### 4.5 实现TensorRT Plugin
+### 4.5 Implementing a TensorRT Plugin
 
-在 TensorRT 中，Plugin是一个非常强大的功能，用于扩展和自定义 TensorRT 的能力。插件允许用户定义自定义的层（layer）或操作（operation），以便在 TensorRT 优化和推理过程中使用。这对于那些在标准 TensorRT 操作集中找不到的特殊操作或自定义操作特别有用。
+In TensorRT, a Plugin is a powerful feature that allows for extending and customizing TensorRT’s capabilities. Plugins enable users to define custom layers or operations that can be used during TensorRT optimization and inference. This is particularly useful for operations not included in the standard TensorRT set or for creating custom operations.
 
-- Plugin允许用户定义自定义的操作，这些操作可能在标准的 TensorRT 操作集中不存在。例如，某些特定的激活函数、归一化操作或其他复杂的计算。
+- Custom Operations: Plugins allow users to define operations that may not exist in the standard TensorRT operations set. For example, specific activation functions, normalization operations, or other complex calculations.
+- Performance Optimization: Plugins can be used to optimize the performance of specific operations. By writing efficient CUDA code, users can achieve faster computation than standard TensorRT operations.
+- Support for New Models and Operations: Plugins enable TensorRT to support new model architectures and operations. As deep learning evolves rapidly with new models and operations emerging frequently, plugins provide a flexible way to support these new features.
 
-- Plugin可以用来优化特定操作的性能。通过编写高效的 CUDA 代码，用户可以实现比标准 TensorRT 操作更高效的计算。
+Process of Writing and Using a TensorRT Plugin
 
-- Plugin使得 TensorRT 能够支持新的模型架构和操作。随着深度学习领域的快速发展，新模型和操作不断涌现，插件提供了一种灵活的方式来支持这些新特性。
+- Defining the Plugin Class: Users need to define a class that inherits from `IPluginV2` or `IPluginV2DynamicExt` and implement the necessary virtual functions. These functions include initialization, execution, serialization, and deserialization.
+- Registering the Plugin: After defining the plugin class, it must be registered with TensorRT. This can be done using the `IPluginCreator` interface.
+- Using the Plugin: During the construction of the TensorRT engine, the custom plugin layer can be added to the network using the `INetworkDefinition` interface.
 
-编写以及使用TensorRT Plugin的流程
+The TensorRT API is available in both C++ and Python, but writing a Plugin requires C++. The kernel implementation functions need to be written in CUDA.
 
-- 用户需要定义一个继承自 `IPluginV2` 或 `IPluginV2DynamicExt` 的类，并实现其虚函数。这些函数包括插件的初始化、执行、序列化和反序列化等。
-- 定义好插件类后，需要将其注册到 TensorRT 中。可以使用 `IPluginCreator` 接口来实现插件的注册。
-- 在构建 TensorRT 引擎时，可以通过 `INetworkDefinition` 接口将自定义插件层添加到网络中。
+#### 4.5.1 Defining a Plugin Class in TensorRT
 
-TensorRT的使用API有C++、Python，但编写Plugin只有Ç++，另外Kernel的实现函数需要用CUDA编写。
-
-#### 4.5.1 TensorRT定义Plugin类
-
-在 TensorRT 中定义插件类时，必须实现一系列关键的虚函数。这些函数负责插件的初始化、执行、序列化和反序列化等操作。通过实现这些函数，用户可以创建自定义的操作，并将其集成到 TensorRT 的优化和推理过程中。以下为一个Plugin类的一系列关键的虚函数。
+When defining a plugin class in TensorRT, a series of key virtual functions must be implemented. These functions handle tasks such as plugin initialization, execution, serialization, and deserialization. By implementing these functions, users can create custom operations and integrate them into TensorRT’s optimization and inference processes. Below is an example of a plugin class with a series of key virtual functions.
 
 ```c++
 #include "NvInfer.h"
@@ -1174,7 +1135,7 @@ public:
 };
 ```
 
-对于以上部分函数需要进行继承并实现。对部分重点函数进行介绍：
+Explanation of Key Functions:
 
 1. `getNbOutputs()`
 
@@ -1182,8 +1143,8 @@ public:
 int getNbOutputs() const override;
 ```
 
-- **作用**：返回插件的输出数量。
-- **返回值**：输出张量的数量。
+- **Purpose**: Returns the number of outputs the plugin will produce.
+- **Return Value**: The number of output tensors.
 
 2. `getOutputDimensions()`
 
@@ -1191,13 +1152,13 @@ int getNbOutputs() const override;
 DimsExprs getOutputDimensions(int outputIndex, const DimsExprs* inputs, int nbInputs, IExprBuilder& exprBuilder) override;
 ```
 
-- **作用**：根据输入张量的维度，计算并返回输出张量的维度。TensorRT的输入输出shape必须要是已知或者可推导出的。
-- **参数**
-  - `outputIndex`：输出张量的索引。
-  - `inputs`：输入张量的维度数组。
-  - `nbInputs`：输入张量的数量。
-  - `exprBuilder`：用于构建维度表达式的工具。
-- **返回值**：输出张量的维度。
+- **Purpose**: Calculates and returns the dimensions of the output tensor based on the input tensor dimensions. TensorRT requires that the input and output shapes are either known or derivable.
+- **Parameters**
+  - `outputIndex`: he index of the output tensor.
+  - `inputs`: The array of input tensor dimensions.
+  - `nbInputs`: The number of input tensors.
+  - `exprBuilder`: A tool used for constructing dimension expressions.
+- **Return Value**: The dimensions of the output tensor.
 
 3. `getWorkspaceSize()`
 
@@ -1205,13 +1166,13 @@ DimsExprs getOutputDimensions(int outputIndex, const DimsExprs* inputs, int nbIn
 size_t getWorkspaceSize(const PluginTensorDesc* inputs, int nbInputs, const PluginTensorDesc* outputs, int nbOutputs) const override;
 ```
 
-- **作用**：返回插件执行时所需的工作空间大小（以字节为单位）。在推理过程中如果需要申请显存，就在设置进行申请，在推理时使用
-- **参数**
-  - `inputs`：输入张量的描述数组。
-  - `nbInputs`：输入张量的数量。
-  - `outputs`：输出张量的描述数组。
-  - `nbOutputs`：输出张量的数量。
-- **返回值**：工作空间的大小（以字节为单位）。
+- **Purpose**: Returns the size of the workspace required by the plugin during execution (in bytes). If the plugin requires additional memory during inference, this function should return the size of that memory.
+- **Parameters**
+  - `inputs`: The array of input tensor descriptors.
+  - `nbInputs`: The number of input tensors.T
+  - `outputs`: The array of output tensor descriptors.
+  - `nbOutputs`: The number of output tensors.
+- **Return Value**: The size of the workspace in bytes.
 
 4. `enqueue()`
 
@@ -1219,15 +1180,15 @@ size_t getWorkspaceSize(const PluginTensorDesc* inputs, int nbInputs, const Plug
 int enqueue(const PluginTensorDesc* inputDesc, const PluginTensorDesc* outputDesc, const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) override;
 ```
 
-- **作用**：执行插件的计算逻辑。这是最为重要的一个函数，是该Plugin实现前向推理的逻辑过程。
-- **参数**
-  - `inputDesc`：输入张量的描述数组。
-  - `outputDesc`：输出张量的描述数组。
-  - `inputs`：输入张量的数据指针数组。
-  - `outputs`：输出张量的数据指针数组。
-  - `workspace`：工作空间指针。
-  - `stream`：CUDA 流。
-- **返回值**：返回 0 表示成功，非 0 表示失败。
+- **Purpose**：Executes the plugin’s computation logic. This is the most important function, as it implements the forward inference logic for the Plugin.
+- **Parameters**
+  - `inputDesc`: The array of input tensor descriptors.
+  - `outputDesc`: The array of output tensor descriptors.
+  - `inputs`: The array of pointers to the input tensor data.
+  - `outputs`: The array of pointers to the output tensor data.
+  - `workspace`: A pointer to the workspace memory.
+  - `stream`: The CUDA stream.
+- **Return Value**: Returns 0 on success, non-zero on failure.
 
 5. `getSerializationSize()`
 
@@ -1235,14 +1196,14 @@ int enqueue(const PluginTensorDesc* inputDesc, const PluginTensorDesc* outputDes
 size_t getSerializationSize() const override;
 ```
 
-- **作用**：返回插件序列化所需的字节数。
-- **返回值**：序列化所需的字节数。
+- **Purpose**: Returns the number of bytes required for serializing the plugin.
+- **Return Value**: The size of the serialized data in bytes.
 
 
 
-#### 4.5.2 注册以及使用Plguin
+#### 4.5.2 Registering and Using the Plugin
 
-另外需要进行注册，`MyCustomPlugin` 是这个Plugin的名次， `1` 是版本号，这个要是唯一的，不能跟已有的Plugin重复，不然会冲突。
+You also need to register the plugin. `MyCustomPlugin` is the name of the plugin, and `1` is the version number. This name must be unique and not conflict with existing plugins to avoid issues.
 
 ```c++
 class MyCustomPluginCreator : public IPluginCreator {
@@ -1259,11 +1220,11 @@ public:
 REGISTER_TensorRT_Plugin(MyCustomPluginCreator);
 ```
 
-通过调用`REGISTER_TensorRT_Plugin`将该Plugin的信息放入一个全局变量，在使用的时候会根据PluginName和PluginVersion进行匹配。
+By calling `REGISTER_TensorRT_Plugin`, the plugin’s information is placed in a global registry. When used, it will match based on the PluginName and PluginVersion.
 
-在完成Plugin的函数实现以及注册后需要编译为动态链接库，以便于后续的使用。
+After implementing the plugin functions and registering it, the plugin needs to be compiled into a shared library for future use.
 
-**使用Plugin**
+**Using the Plugin**
 
 ```python
 INetworkDefinition* network = builder->createNetworkV2(0);
@@ -1272,22 +1233,22 @@ IPluginV2Layer* customLayer = network->addPluginV2(&input, 1, MyCustomPlugin());
 network->markOutput(*customLayer->getOutput(0));
 ```
 
-以上代码为使用c++在使用API搭建网络时，使用Plugin作为一层Layer，放入到网络中。另外在编译时需要链接上一步编译好的Plugin的动态链接库。
+The code above shows how to use the plugin as a layer in the network when building the network using the C++ API. Additionally, when compiling, you need to link the previously compiled plugin shared library.
 
 #### 4.5.3 LayerNorm Plugin
 
-在TensorRT7版本中对Transformer支持的还不够好，其中对LayerNorm算子并不支持，在这种情况如果使用TensorRT进行BERT推理，就需要编写LayerNorm的Plugin。
+In TensorRT version 7, support for Transformers was not comprehensive, particularly for the LayerNorm operator, which was not supported. Therefore, to use TensorRT for BERT inference, you need to write a custom LayerNorm Plugin.
 
-在前面我们已经搞清楚了编写Plugin的步骤，以及LayerNorm的计算过程。下面以该算子为例，实际展示一下如何实现该Plugin。
+We've already discussed the steps for writing a Plugin and the process for LayerNorm computation. Below, we'll demonstrate how to implement this Plugin with LayerNorm as an example.
 
-常量定义，定义了插件的版本和名称。
+Constant Definitions: These define the version and name of the Plugin.
 
 ```cpp
 constexpr const char* LAYER_NORM_VERSION{"1"};
 constexpr const char* LAYER_NORM_NAME{"LayerNormPluginDynamic"};
 ```
-构造函数
 
+Constructors:
 ```cpp
 LayerNormPlugin::LayerNormPlugin(const std::string& name, const nvinfer1::DataType type, const size_t dim, const float eps)
     : layer_name_(name), dim_(dim), data_type_(type), eps_(eps) {}
@@ -1299,10 +1260,10 @@ LayerNormPlugin::LayerNormPlugin(const std::string& name, const void* data, size
   deserialize_value(&data, &length, &eps_);
 }
 ```
-- 第一个构造函数用于初始化插件的名称、数据类型、维度和 epsilon 值。
-- 第二个构造函数用于反序列化插件的状态，从而恢复插件的内部状态。
+- The first constructor initializes the Plugin with the layer name, data type, dimension, and epsilon value.
+- The second constructor deserializes the Plugin's state, restoring its internal state.
 
-`IPluginV2DynamicExt` 方法实现
+`IPluginV2DynamicExt` Method Implementations:
 
 1. `clone`
 
@@ -1312,7 +1273,7 @@ IPluginV2DynamicExt* LayerNormPlugin::clone() const TRTNOEXCEPT {
   return ret;
 }
 ```
-这个方法用于克隆插件对象，返回一个新的 `LayerNormPlugin` 实例。
+This method clones the Plugin object and returns a new instance of `LayerNormPlugin`.
 
 2. `getOutputDimensions`
 
@@ -1322,7 +1283,7 @@ DimsExprs LayerNormPlugin::getOutputDimensions(int outputIndex, const DimsExprs*
   return inputs[0];
 }
 ```
-这个方法用于获取输出张量的维度。它假设输入张量的数量为 3，并返回第一个输入张量的维度作为输出维度。
+This method retrieves the dimensions of the output tensor. It assumes there are three input tensors and returns the dimensions of the first input tensor as the output dimensions.
 
 2. `supportsFormatCombination`
 
@@ -1335,7 +1296,7 @@ bool LayerNormPlugin::supportsFormatCombination(int pos, const PluginTensorDesc*
   return (in_out.type == data_type_) && (in_out.format == TensorFormat::kLINEAR);
 }
 ```
-这个方法用于检查插件是否支持特定的数据格式和类型。它假设输入张量的数量为 3，输出张量的数量为 1，并检查数据类型和格式是否匹配。
+This method checks whether the Plugin supports a specific data format and type. It assumes there are three input tensors and one output tensor, and it checks if the data type and format match.
 
 4. `configurePlugin`
 
@@ -1347,7 +1308,7 @@ void LayerNormPlugin::configurePlugin(const DynamicPluginTensorDesc* inputs, int
   assert(data_type_ == inputs[0].desc.type);
 }
 ```
-这个方法用于配置插件，验证输入和输出张量的数量和数据类型。
+This method configures the Plugin, validating the number and data types of the input and output tensors.
 
 `getWorkspaceSize`
 
@@ -1356,11 +1317,11 @@ size_t LayerNormPlugin::getWorkspaceSize(const PluginTensorDesc* inputs, int nbI
   return 0;
 }
 ```
-这个方法返回插件所需的工作空间大小。在这个例子中，工作空间大小为 0。
+This method returns the size of the workspace required by the Plugin. In this example, the workspace size is 0.
 
 5. `enqueue`
 
-   这个方法是插件的核心计算部分。它根据数据类型（`kFLOAT` 或 `kHALF`）选择不同的计算路径，并调用 `compute_layer_norm` 函数来执行实际的 Layer Normalization 操作。
+This method contains the core computation logic of the Plugin. It selects different computation paths based on the data type (`kFLOAT` or `kHALF`) and calls the `compute_layer_norm` function to perform the actual LayerNorm operation.
 
 ```cpp
 int LayerNormPlugin::enqueue(const PluginTensorDesc* inputDesc, const PluginTensorDesc* outputDesc, const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT {
@@ -1397,7 +1358,7 @@ int LayerNormPlugin::enqueue(const PluginTensorDesc* inputDesc, const PluginTens
   return status;
 }
 ```
-在调用enque之后会去调用CUDA代码实现LayerNorm的前向过程， 会根据输入维度的大小，设置不同的grid、block、thread并采用不同的CUDA函数实现，这里展示并简单讲解其中的一种`layer_norm_kernel_small`
+The `enqueue` function eventually calls a CUDA kernel to implement the forward pass of the LayerNorm. Depending on the input dimensions, different grid, block, and thread configurations are used, along with different CUDA functions. Below is a simple example of one such kernel, `layer_norm_kernel_small`:
 
 ```C++
 template <typename T, typename OP_T, int TPB>
@@ -1433,16 +1394,14 @@ __global__ void layer_norm_kernel_small(const int nHiddenDimension, const T* inp
 }
 ```
 
-这个核函数主要实现过程如下，这也是LayerNorm的实际计算过程（前面有公式计算过程）
+This kernel function performs the LayerNorm computation by following these steps:
 
-1. 计算每个线程的输入数据值和中间结果。
-2. 使用 Warp Reduce 计算所有线程的均值和方差。
-3. 计算均值和反标准差。
-4. 计算归一化后的输出值。
+1. Compute the input value and intermediate results for each thread.
+2. Use Warp Reduce to compute the mean and variance for all threads.
+3. Compute the mean and reciprocal standard deviation.
+4. Compute the normalized output value.
 
-
-
-其中使用 CUB 库的 Warp Reduce 功能来计算均值和方差。计算均值和方差
+It uses the CUB library’s Warp Reduce feature to compute the mean and variance:
 
 ```
 using WarpReduce = cub::WarpReduce<kvp<OP_T>, TPB>;
@@ -1452,11 +1411,11 @@ __shared__ OP_T mu, rsigma;
 const auto sumKV = WarpReduce(temp).Reduce(threadData, mySum<OP_T>());
 ```
 
-- `temp`：共享内存，用于存储 Warp Reduce 的临时数据。
-- `mu` 和 `rsigma`：共享内存变量，用于存储均值和反标准差。
-- `sumKV`：使用 Warp Reduce 计算所有线程的中间结果的总和。
+- `temp`: Shared memory used to store temporary data for Warp Reduce.
+- `mu` and `rsigma`: Shared memory variables used to store the mean and reciprocal standard deviation.
+- `sumKV`: The sum of intermediate results computed by Warp Reduce.
 
-#### 4.5.4 将LayerNorm Plugin插入到网络中
+#### 4.5.4 Inserting the LayerNorm Plugin into the Network
 
 ```python
 handle = ctypes.CDLL("LayerNorm.so", mode=ctypes.RTLD_GLOBAL)
@@ -1482,120 +1441,122 @@ def addLayerNorm(network, layer, x, layer_name=None, precision=None):
     return trt_layer.get_output(0)
 ```
 
-这段代码的主要功能是将一个LayerNorm层添加到TensorRT网络中。
+This code adds a LayerNorm layer to a TensorRT network.
 
-代码使用`ctypes`库加载一个名为`LayerNorm.so`的共享库，并将其设置为全局加载模式。这通常是为了确保库中的符号可以被其他库或模块访问。
+The code uses the `ctypes` library to load a shared library named `LayerNorm.so` in global loading mode. This ensures that symbols in the library can be accessed by other libraries or modules.
+
 ```python
 handle = ctypes.CDLL("LayerNorm.so", mode=ctypes.RTLD_GLOBAL)
 ```
-1. **获取Plugin creator**：
+1. **Get the Plugin Creator:**：
 
 ```python
 plg_creator = plg_registry.get_Plugin_creator("LayerNorm", "1", "")
 if not plg_creator:
     raise RuntimeError("Could not find LayerNorm")
 ```
-使用Plugin注册表获取名为`LayerNorm`的插件创建器。如果找不到该插件创建器，则抛出运行时错误。
+Use the Plugin registry to obtain the Plugin creator for the `LayerNorm`. If it can't be found, a runtime error is raised.
 
-2. **创建插件字段集合**：
+2. **Create Plugin Field Collection**:
 
 ```python
 pfc = trt.PluginFieldCollection([])
 ```
-创建一个空的插件字段集合。这个集合可以用来传递插件所需的参数，但在这个例子中没有传递参数。
+Create an empty Plugin field collection. This collection can be used to pass parameters required by the Plugin, but no parameters are passed in this example.
 
-3. **创建插件**：
+3. **Create the Plugin**:
 
 ```python
 Plugin = plg_creator.create_Plugin("LayerNorm", pfc)
 if not Plugin:
     raise RuntimeError("Could not create_Plugin LayerNormPluginDynamic")
 ```
-使用插件创建器创建名为`LayerNorm`的插件。如果创建失败，则抛出运行时错误。
+Use the Plugin creator to create a Plugin named `LayerNorm`. If creation fails, a runtime error is raised.
 
-4. **添加常量层**：
+4. **Add Constant Layers**:
 
 ```python
 gamma = network.add_constant(gamma.shape, trt.Weights(layer.weight.detach().numpy())).get_output(0)
 beta = network.add_constant(beta.shape, trt.Weights(layer.bias.detach().numpy())).get_output(0)
 ```
-将权重和偏置转换为TensorRT的常量层，并获取它们的输出。
+Convert the weights and biases into TensorRT constant layers and retrieve their outputs.
 
-5. **添加插件层**：
+5. **Add the Plugin Layer**:
 
 ```python
 trt_layer = network.add_Plugin_v2([x, gamma, beta], Plugin)
 ```
-使用`add_Plugin_v2`方法将插件层添加到网络中，输入包括原始输入张量`x`、权重`gamma`和偏置`beta`。
+Use the `add_plugin_v2` method to add the Plugin layer to the network, with inputs including the original input tensor `x`, the weights `gamma`, and the bias `beta`.
 
-### 4.6 使用TensorRT量化
+### 4.6 Quantization with TensorRT
 
-在深度学习模型压缩中，模型量化是一种常用的技术，用于减少模型的大小和计算复杂度，同时尽量保持模型的性能。量化是将模型的权重和激活从高精度（如 FP32）转换为低精度（如 FP16 或 INT8）的过程。低精度计算通常比高精度计算更快，因为它们需要的计算资源更少。 NVIDIA GPU对低精度计算进行了优化，能够显著提高推理速度。另外低精度数据类型占用的内存更少，例如，FP16 占用的内存是 FP32 的一半，INT8 占用的内存是 FP32 的四分之一。如果想要系统学习模型量化的知识，尤其是大模型量化，可以学习深蓝学院深度学习模型压缩的课程，课程中会系统讲解模型量化的概念以及代码实践。
+Model quantization is a commonly used technique in deep learning model compression to reduce model size and computational complexity while maintaining performance as much as possible. Quantization involves converting the weights and activations of a model from high precision (e.g., FP32) to lower precision (e.g., FP16 or INT8). Lower precision computations are typically faster because they require fewer computational resources. NVIDIA GPUs are optimized for low-precision calculations, which can significantly increase inference speed. Additionally, lower precision data types take up less memory. For example, FP16 uses half the memory of FP32, and INT8 uses one-quarter the memory of FP32. If you're interested in learning more about model quantization, especially for large models, you might consider taking courses on deep learning model compression, such as those offered by DeepBlue Academy, which systematically cover the concepts and practical implementation of model quantization.
 
-FP32、FP16 、 TF32和INT8 是三种不同的浮点数数据格式，它们在表示范围、精度和存储需求上各有不同。
+FP32, FP16, TF32, and INT8 are different numerical data formats, each with its own characteristics in terms of representation range, precision, and storage requirements.
 
-FP32 是标准的 32 位浮点数格式，符合 IEEE 754 标准。它由三个部分组成：符号位、指数位和尾数位。
+FP32: Standard 32-bit floating-point format conforming to the IEEE 754 standard, consisting of three parts: sign bit, exponent bit, and mantissa bit.
 
-- **符号位（1 位）**：表示数值的正负。
-- **指数位（8 位）**：表示数值的范围。
-- **尾数位（23 位）**：表示数值的精度。
-- **表示范围**：约为 1.4×$10^{-45}$ 到 3.4×$10^{38}$
+- **Sign bit（1 bit）**：Indicates the sign of the value.
+- **Exponent bit（8 bit）**：Indicates the range of the value.
+- **Mantissa bit（23 bit）**：Indicates the precision of the value.
+- **Range**：Approximately 1.4×$10^{-45}$ to 3.4×$10^{38}$
 
-FP16 是 16 位浮点数格式，也符合 IEEE 754 标准。它同样由三个部分组成：符号位、指数位和尾数位。
+FP16: A 16-bit floating-point format, also conforming to the IEEE 754 standard, with three parts: sign bit, exponent bit, and mantissa bit.
 
-- **符号位（1 位）**：表示数值的正负。
-- **指数位（5 位）**：表示数值的范围。
-- **尾数位（10 位）**：表示数值的精度。
-- **表示范围**：约为 6.1×$10^{-5}$ 到 6.5×$10^{4}$
+- **Sign bit（1 bit）**：Indicates the sign of the value.
+- **Exponent bit（5 bit）**：Indicates the range of the value.
+- **Mantissa bit（10 bit）**：Indicates the precision of the value.
+- **Range**：Approximately 6.1×$10^{-5}$ to 6.5×$10^{4}$.
 
-TF32 是 NVIDIA 提出的专用于深度学习的浮点数格式，旨在在保持较高精度的同时提高计算性能。TF32 结合了 FP32 和 FP16 的特点。
+TF32: A floating-point format introduced by NVIDIA specifically for deep learning, designed to improve computational performance while maintaining high precision. TF32 combines aspects of FP32 and FP16.
 
-- **符号位（1 位）**：表示数值的正负。
-- **指数位（8 位）**：与 FP32 相同，表示数值的范围。
-- **尾数位（10 位）**：与 FP16 相同，表示数值的精度。
-- **表示范围**：与 FP32 相同，约为 1.4×$10^{-45}$ 到 3.4×$10^{38}$。
+- **Sign bit（1 bit）**：Indicates the sign of the value.
+- **Exponent bit（8 bit）**：Same as FP32, indicating the range of the value.
+- **Mantissa bit（10 bit）**：Same as FP16, indicating the precision of the value.
+- **Range**：Approximately 1.4×$10^{-45}$ to 3.4×$10^{38}$.
 
-INT8 是一种 8 位整数格式，可以表示有符号整数或无符号整数。
+INT8: An 8-bit integer format that can represent signed or unsigned integers.
 
-- **符号位（1 位）**：表示数值的正负。
-- **数值位（7 位）**：表示数值的大小。
-- **表示范围**：-128 到 127。
+- **Sign bit（1 bit）**：Indicates the sign of the value.
+- **Value bit（7 bit）**：Indicates the magnitude of the value.
+- **Range**：-128 to 127.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/numerical-formats-supported-by-ampere-gpus-1.png" alt="Accelerating TensorFlow on NVIDIA A100 GPUs | NVIDIA Technical Blog" style="zoom:75%;" />
 
-#### 4.6.1 在TensorRT中使用FP16
+#### 4.6.1 Using FP16 in TensorRT
 
-在前面也有提到过，使用FP16比较简单。
+As mentioned earlier, using FP16 is relatively simple.
 
-使用API时在config中进行设置 `config->setFlag(nvinfer1::BuilderFlag::kFP16);` (C++) `builder_config.set_flag(trt.BuilderFlag.FP16)` (Python)
+When using the API, you can set it in the config with `config->setFlag(nvinfer1::BuilderFlag::kFP16)`; (C++) or `builder_config.set_flag(trt.BuilderFlag.FP16)` (Python).
+When converting ONNX models using `trtexec`, you can add the `-fp16` flag.
 
-使用trtexec进行ONNX转换时加入参数 `-fp16`
+#### 4.6.2 Using INT8 in TensorRT
 
-#### 4.6.2 在TensorRT中使用INT8
+In INT8 quantization, a key step is determining the appropriate threshold (scale), which dictates how floating-point activations are mapped to 8-bit integers.
 
-在INT8量化中，关键的一步是确定合适的阈值（scale），这个阈值决定了如何将浮点数的激活值映射到8位整数。
-
-首先，通过对模型中每一层的激活值进行统计分析，可以观察到激活值的分布特点：大部分激活值集中在较低的范围内，而较大的激活值非常少，几乎可以忽略。这一观察表明，使用饱和量化（即将最大激活值映射到127）可能不是最优的选择，因为这会将时间浪费在大量的量化范围在极少数的大激活值上。
+Initially, by statistically analyzing the activations of each layer in the model, it is observed that most activation values are concentrated within a lower range, with very few large activation values. This suggests that using saturation quantization (mapping the maximum activation value to 127) might not be optimal, as it wastes quantization range on a small number of large activation values.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/distribution-of-different-layers.png.png" alt="img" style="zoom:67%;" />
 
-为了更有效地利用量化范围，TensorRT采用一种动态确定阈值的方法。具体做法是：
-1. 将每层特征图的激活值分到2048个bins中，每个bin代表一个激活值区间；
-2. 从第127个bin开始，尝试将每个bin的中间值作为阈值，并计算相应的量化结果；
-3. 对于每个尝试的阈值，将低于该阈值的激活值映射到0-127之间的整数，高于阈值的激活值则映射到127；
-4. 生成一个128维的分布向量，表示每个量化值的元素个数；
-5. 通过计算原始分布（2048个bins）和量化后分布（128维向量）之间的相似度（使用KL散度），评估每个阈值的合理性；
-6. 选择使得KL散度最小的阈值作为最终的scale。
+To more effectively utilize the quantization range, TensorRT adopts a dynamic threshold determination method. The specific approach is:
+1. Divide the activation values of each layer's feature map into 2048 bins, with each bin representing a range of activation values.
+2. Starting from the 127th bin, attempt to use the midpoint of each bin as a threshold and compute the corresponding quantization results.
+3. For each attempted threshold, map activation values below that threshold to integers between 0-127, and map activation values above the threshold to 127.
+4. Generate a 128-dimensional distribution vector representing the number of elements for each quantized value.
+5. Evaluate the reasonableness of each threshold by calculating the similarity (using KL divergence) between the original distribution (2048 bins) and the quantized distribution (128-dimensional vector).
+6. Select the threshold that minimizes the KL divergence as the final scale.
 
 <img src="https://xsj-niehen.oss-cn-hangzhou.aliyuncs.com/Docs_assert/satuation_int8_quantization.png" alt="img" style="zoom:67%;" />
 
-这种方法的核心在于通过动态调整阈值，使得量化后的分布尽可能接近原始分布，从而减少量化带来的信息损失。通过这种方式，可以在保持模型性能的同时，有效地减少模型的计算和存储需求。另外这种做法需要使用一个校准数据集进行量化参数。
+The core of this method is dynamically adjusting the threshold so that the quantized distribution closely matches the original distribution, thereby minimizing the information loss caused by quantization. This allows for reducing the computational and storage demands of the model while maintaining its performance. This method requires a calibration dataset to determine the quantization parameters.
 
-这里依旧使用BERT为例子，讲解如何使用int8量化，相比于FP16，需要准备校准数据集，并定义一个自定义的校准器类，继承自`trt.IInt8EntropyCalibrator`。
+Example Using BERT
 
-**准备数据集**
+Using BERT as an example, we'll explain how to perform INT8 quantization. Unlike FP16, INT8 requires preparing a calibration dataset and defining a custom calibrator class that inherits from `trt.IInt8EntropyCalibrator`.
 
-跟上面使用到的得到BERT输入的API基本一致，是将输入的文本转换为适合模型输入的格式。具体来说，它使用一个分词器（tokenizer）对文本进行编码，并生成模型所需的输入张量。
+**Preparing the Dataset**
+
+The method for obtaining BERT input is similar to the API used earlier, where the input text is converted into a format suitable for the model. Specifically, it uses a tokenizer to encode the text and generate the required input tensors for the model.
 
 ```
 def text2inputs(tokenizer, text):
@@ -1611,9 +1572,9 @@ def text2inputs(tokenizer, text):
     return input_list
 ```
 
-**实现一个校准类**
+**Implementing a Calibrator Class**
 
-`BERTCalibrator` 类用于在 TensorRT 中进行 BERT 模型的 INT8 量化校准，并继承 `trt.IInt8EntropyCalibrator`。它通过读取文本数据并将其转换为模型输入格式，然后在校准过程中提供这些输入数据。该类还实现了读取和写入校准缓存的功能，以便在多次运行时复用校准数据。
+The `BERTCalibrator` class is used for performing INT8 quantization calibration of a BERT model in TensorRT and inherits from `trt.IInt8EntropyCalibrator`. It reads the text data, converts it into a model input format, and provides these inputs during calibration. The class also implements the functionality to read and write calibration caches, allowing calibration data to be reused across multiple runs.
 
 ```python
 class BERTCalibrator(trt.IInt8LegacyCalibrator):
@@ -1711,25 +1672,24 @@ class BERTCalibrator(trt.IInt8LegacyCalibrator):
         return None
 ```
 
-在初始化的时候有以下步骤：
+During the initialization of the BERTCalibrator class, the following steps are performed:
 
-- 调用父类的构造函数 `trt.IInt8LegacyCalibrator.__init__(self)`。
-- 使用 `BERTTokenizer` 从预训练的 BERT 模型路径初始化分词器。
-- 从文本文件中读取数据，并使用 `text2inputs` 函数将文本转换为 BERT 模型的输入格式（`input_ids`, `token_type_ids`, `position_ids`）。
-- 设置校准所需的参数，如缓存文件路径、批处理大小、最大序列长度等。
-- 分配足够的 GPU 内存用于存储整个批次的数据。
+- **Calling the Parent Class Constructor**: The constructor of the parent class, trt.IInt8LegacyCalibrator, is called using trt.IInt8LegacyCalibrator.__init__(self).
+- **Initializing the Tokenizer**: The BERTTokenizer is initialized from a pretrained BERT model path to handle the tokenization of input text.
+- **Reading and Processing Data**: The text data is read from a file and then converted into the BERT model's input format (input_ids, token_type_ids, position_ids) using the text2inputs function.
+- **Setting Calibration Parameters**: Essential calibration parameters such as the cache file path, batch size, and maximum sequence length are set.
+- **Allocating GPU Memory**: Sufficient GPU memory is allocated to store the data for the entire batch.
 
-对一些需要重点注意的，需要实现的函数，进行简单介绍：
+Key Functions to Implement and Pay Attention To:
 
--  `get_batch_size()` 函数， 用于返回批处理大小。
-- `get_batch` 方法根据当前索引获取下一个批次的输入数据，并将其复制到 GPU 内存中。如果当前索引加上批处理大小超过输入数据的数量，则返回 `None`
+-  `get_batch_size()`: This function returns the batch size for the calibration process.
+- `get_batch`: This method retrieves the next batch of input data based on the current index and copies it to GPU memory. If the current index plus the batch size exceeds the total number of input data, it returns `None`.
+- `read_calibration_cache`: This method checks if a calibration cache file exists. If it does, the cache is read and used for calibration.
+- `write_calibration_cache`: This method writes the calibration cache to a file, allowing it to be reused in future runs.
+- `get_quantile` 和 `get_regression_cutoff`: These methods return specific parameters required for quantization, such as the quantile for quantile-based calibration or the regression cutoff.
+- `read_histogram_cache` 和 `write_histogram_cache`: These methods are used to read from and write to the histogram cache, which helps in preserving the distribution of activation values for more accurate quantization.
 
-- `read_calibration_cache` 方法检查是否存在校准缓存文件，如果存在则读取缓存。
-- `write_calibration_cache` 方法将校准缓存写入文件。
-- `get_quantile` 和 `get_regression_cutoff` 方法返回量化所需的参数。
-- `read_histogram_cache` 和 `write_histogram_cache` 方法用于读取和写入直方图缓存。
-
-## 5. 参考
+## 5. References
 
 https://huggingface.co/blog/BERT-101
 
