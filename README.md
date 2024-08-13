@@ -80,6 +80,8 @@ The BERT embedding layer includes the following components:
 - **Segment Embeddings**: BERT can process pairs of sentences (e.g., questions and answers in a QA task). Segment embeddings are used to distinguish between the two sentences, with each sentence being assigned a different segment embedding.
 - **Positional Embeddings**: Since BERT uses a Transformer architecture, which doesn’t naturally handle sequential data like RNNs, positional embeddings are introduced to encode the position of each token in the sentence.
 
+![Embeddings](Input.png)
+
 These three types of embeddings are added element-wise to produce a composite embedding, which encodes the token’s semantic information, its position in the sentence, and which sentence it belongs to (in the case of paired sentences). This composite embedding is then passed to the subsequent layers of BERT for further processing.
 
 Here’s how it’s implemented in PyTorch:
